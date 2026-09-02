@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Спаси Пушка — деление уголком</title>
+<style>
+:root{
+  --bg:#17110e;--paper:#fff6dc;--ink:#2d2522;--muted:#74645a;
+  --blue:#367fb4;--blue2:#e7f3fa;--gold:#eba82d;--green:#6da73e;
+  --red:#cf6852;--line:#9fc9e1;--wood:#50301f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#15100d;color:var(--ink);font-family:Inter,"SF Pro Rounded","Trebuchet MS",system-ui,sans-serif}
+button,input{font:inherit}
+body{overflow-x:hidden}
+.game{max-width:1180px;margin:auto;padding:8px;background:linear-gradient(135deg,#1d1511,#2b1c15)}
+.top{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:7px}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:8px;background:linear-gradient(#633c25,#3c2418);border:1px solid #8c6548;border-radius:15px;padding:9px 11px;color:#fff3d7}
+.brand b{font-size:18px} .brand span{font-size:12px;color:#eacda7;font-weight:800}
+.locks{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;background:#251b16;border-radius:13px;padding:6px}
+.lock{height:40px;border-radius:9px;position:relative;display:flex;align-items:center;justify-content:center;background:#49484a;border:1px solid #656568;box-shadow:inset 0 1px rgba(255,255,255,.09)}
+.lock:before{content:"";position:absolute;width:17px;height:17px;border:4px solid #8d8d91;border-bottom:0;border-radius:9px 9px 0 0;top:2px}
+.lock strong{position:absolute;bottom:4px;font-size:11px;color:#ddd}
+.lock.open{background:linear-gradient(#f7bd46,#d98b16);border-color:#9e5f0e}
+.lock.open:before{border-color:#d58a17;transform:translateX(4px) rotate(28deg);transform-origin:left bottom}
+.lock.open strong{color:#57300d}
+.lock.current{box-shadow:0 0 0 2px #ffd86d,0 0 14px rgba(255,185,56,.65)}
+
+.hero{position:relative;height:235px;border-radius:18px;overflow:hidden;border:1px solid #674733;background:#23150f;margin-bottom:8px}
+.hero im
