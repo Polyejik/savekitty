@@ -24,17 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build final game
+      - name: Build site
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf public
           mkdir -p public
-          cat _parts/p00.b64 _parts/p01.b64 _parts/p02.b64 _parts/p03.b64 _parts/p04.b64 _parts/p05.b64 _parts/p06.b64 _parts/p07.b64 > /tmp/game.b64
-          base64 -d /tmp/game.b64 > /tmp/game.html.gz
-          gzip -dc /tmp/game.html.gz > public/index.html
+          cp index.html public/index.html
+          cp -r _parts public/_parts
           cp progress.csv public/progress.csv
           test -s public/index.html
-          grep -q 'Спаси Пушка' public/index.html
+          grep -q 'Доска почёта' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
