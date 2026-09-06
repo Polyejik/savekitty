@@ -34,8 +34,10 @@ jobs:
           cp -r _parts public/_parts
           cp progress.csv public/progress.csv
           cp Kotik.mp4 public/Kotik.mp4
+          cp pushok-praise.js public/pushok-praise.js
           test -s public/index.html
           test -s public/Kotik.mp4
+          test -s public/pushok-praise.js
           grep -q 'Доска почёта' public/index.html
 
       - name: Setup Pages
