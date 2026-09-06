@@ -33,7 +33,9 @@ jobs:
           cp index.html public/index.html
           cp -r _parts public/_parts
           cp progress.csv public/progress.csv
+          cp Kotik.mp4 public/Kotik.mp4
           test -s public/index.html
+          test -s public/Kotik.mp4
           grep -q 'Доска почёта' public/index.html
 
       - name: Setup Pages
