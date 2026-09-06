@@ -35,9 +35,11 @@ jobs:
           cp progress.csv public/progress.csv
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
+          cp game-keypad.js public/game-keypad.js
           test -s public/index.html
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
+          test -s public/game-keypad.js
           grep -q 'Доска почёта' public/index.html
 
       - name: Setup Pages
