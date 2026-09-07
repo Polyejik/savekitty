@@ -36,13 +36,14 @@ jobs:
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
           cp game-keypad.js public/game-keypad.js
+          cp pushok-hero.b64 public/pushok-hero.b64
           python3 - <<'PY'
           from pathlib import Path
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           needle="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          inject="html=html.replace('</head>','<script src=\"game-keypad.js?v=1\"><\\/script></head>');"
-          if 'game-keypad.js?v=1' not in s:
+          inject="html=html.replace('</head>','<script src=\"game-keypad.js?v=2\"><\\/script></head>');"
+          if 'game-keypad.js?v=2' not in s:
               if needle not in s:
                   raise SystemExit('pushok script injection anchor not found')
               s=s.replace(needle, needle+'\n'+inject, 1)
@@ -52,8 +53,9 @@ jobs:
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
           test -s public/game-keypad.js
+          test -s public/pushok-hero.b64
           grep -q 'Доска почёта' public/index.html
-          grep -q 'game-keypad.js?v=1' public/index.html
+          grep -q 'game-keypad.js?v=2' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
