@@ -44,11 +44,14 @@ jobs:
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          inject="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=4\"><\\/script></head>');"
-          if 'game-ui-v4.js?v=4' not in s:
+          old="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=4\"><\\/script></head>');"
+          new="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=5\"><\\/script></head>');"
+          if old in s:
+              s=s.replace(old,new)
+          elif 'game-ui-v4.js?v=5' not in s:
               if anchor not in s:
                   raise SystemExit('praise script injection anchor not found')
-              s=s.replace(anchor, anchor+'\n'+inject, 1)
+              s=s.replace(anchor, anchor+'\n'+new, 1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -58,7 +61,7 @@ jobs:
           test -s public/game-ui-v4.js
           test -s public/_hero/p00.b64
           test -s public/_hero/p08.b64
-          grep -q 'game-ui-v4.js?v=4' public/index.html
+          grep -q 'game-ui-v4.js?v=5' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
