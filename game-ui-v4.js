@@ -2,6 +2,8 @@
   const TOTAL_ROWS=8;
   const HERO_PARTS=9;
   const $=id=>document.getElementById(id);
+  let scheduled=false;
+  let heroUrl=null;
 
   const css=`
     :root{--pk-cell:24px;--pk-sign:17px}
@@ -58,8 +60,11 @@
   `;
 
   function addStyles(){
-    if($('pushok-ui-v4-style')) return;
-    const s=document.createElement('style');s.id='pushok-ui-v4-style';s.textContent=css;document.head.appendChild(s);
+    if($('pushok-ui-v5-style')) return;
+    const s=document.createElement('style');
+    s.id='pushok-ui-v5-style';
+    s.textContent=css;
+    document.head.appendChild(s);
   }
 
   function findAnswer(){
@@ -67,63 +72,168 @@
   }
 
   function fireInput(input){input.dispatchEvent(new Event('input',{bubbles:true}))}
-  function typeDigit(d){const input=findAnswer();if(!input||input.disabled)return;let v=String(input.value||'').replace(/\D/g,'');if(v.length>=6)return;input.value=v+d;fireInput(input)}
-  function erase(){const input=findAnswer();if(!input||input.disabled)return;input.value=String(input.value||'').slice(0,-1);fireInput(input)}
+  function typeDigit(d){
+    const input=findAnswer();
+    if(!input||input.disabled)return;
+    let v=String(input.value||'').replace(/\D/g,'');
+    if(v.length>=6)return;
+    input.value=v+d;
+    fireInput(input);
+  }
+  function erase(){
+    const input=findAnswer();
+    if(!input||input.disabled)return;
+    input.value=String(input.value||'').slice(0,-1);
+    fireInput(input);
+  }
 
   function ensureKeypad(){
-    const input=findAnswer();if(!input)return;
-    input.readOnly=true;input.setAttribute('inputmode','none');input.setAttribute('autocomplete','off');
+    const input=findAnswer();
+    if(!input)return;
+    if(!input.readOnly) input.readOnly=true;
+    if(input.getAttribute('inputmode')!=='none') input.setAttribute('inputmode','none');
+    if(input.getAttribute('autocomplete')!=='off') input.setAttribute('autocomplete','off');
+
     let pad=$('pushok-keypad');
     if(!pad){
-      pad=document.createElement('div');pad.id='pushok-keypad';pad.setAttribute('role','group');pad.setAttribute('aria-label','Цифровая клавиатура');
-      ['1','2','3','4','5','6','7','8','9'].forEach(n=>{const b=document.createElement('button');b.type='button';b.dataset.key=n;b.textContent=n;pad.appendChild(b)});
-      const zero=document.createElement('button');zero.type='button';zero.dataset.key='0';zero.textContent='0';zero.className='pk-zero';pad.appendChild(zero);
-      const del=document.createElement('button');del.type='button';del.dataset.key='back';del.textContent='⌫';del.className='pk-delete';del.setAttribute('aria-label','Стереть');pad.appendChild(del);
-      pad.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;b.dataset.key==='back'?erase():typeDigit(b.dataset.key)});
-      const row=input.closest('.answerRow')||input.parentElement;row.insertAdjacentElement('afterend',pad);
+      pad=document.createElement('div');
+      pad.id='pushok-keypad';
+      pad.setAttribute('role','group');
+      pad.setAttribute('aria-label','Цифровая клавиатура');
+      ['1','2','3','4','5','6','7','8','9'].forEach(n=>{
+        const b=document.createElement('button');
+        b.type='button';b.dataset.key=n;b.textContent=n;pad.appendChild(b);
+      });
+      const zero=document.createElement('button');
+      zero.type='button';zero.dataset.key='0';zero.textContent='0';zero.className='pk-zero';pad.appendChild(zero);
+      const del=document.createElement('button');
+      del.type='button';del.dataset.key='back';del.textContent='⌫';del.className='pk-delete';del.setAttribute('aria-label','Стереть');pad.appendChild(del);
+      pad.addEventListener('click',e=>{
+        const b=e.target.closest('button');
+        if(!b)return;
+        b.dataset.key==='back'?erase():typeDigit(b.dataset.key);
+      });
+      const row=input.closest('.answerRow')||input.parentElement;
+      row.insertAdjacentElement('afterend',pad);
     }
-    pad.querySelectorAll('button').forEach(b=>b.disabled=!!input.disabled);
+    const disabled=!!input.disabled;
+    pad.querySelectorAll('button').forEach(b=>{if(b.disabled!==disabled)b.disabled=disabled});
   }
 
   function ensureRows(){
-    const grid=$('grid');if(!grid)return;
+    const grid=$('grid');
+    if(!grid)return;
     const existing=[...grid.children].filter(x=>x.classList&&x.classList.contains('mrow'));
     const n=Math.max(1,(existing[0]?.children.length||5)-1);
+    if(existing.length>=TOTAL_ROWS)return;
+    const frag=document.createDocumentFragment();
     for(let k=existing.length;k<TOTAL_ROWS;k++){
-      const r=document.createElement('div');r.className='mrow pk-placeholder';r.style.setProperty('--n',n);
+      const r=document.createElement('div');
+      r.className='mrow pk-placeholder';
+      r.style.setProperty('--n',n);
       const sg=document.createElement('div');sg.className='sign';sg.innerHTML='&nbsp;';r.appendChild(sg);
       for(let i=0;i<n;i++){const c=document.createElement('div');c.className='cell';c.innerHTML='&nbsp;';r.appendChild(c)}
-      grid.appendChild(r);
+      frag.appendChild(r);
     }
+    grid.appendChild(frag);
   }
 
   function compactStep(){
-    const t=$('actionTitle');if(t)t.textContent='';
+    const t=$('actionTitle');
+    if(t&&t.textContent!=='')t.textContent='';
     const action=document.querySelector('.action');
     const text=$('actionText');
-    if(action&&text&&action.classList.contains('step1-compact')) text.style.visibility='hidden';
-    else if(text) text.style.visibility='visible';
+    if(!action||!text)return;
+    const wanted=action.classList.contains('step1-compact')?'hidden':'visible';
+    if(text.style.visibility!==wanted)text.style.visibility=wanted;
   }
 
   function placeHall(){
-    const locks=$('locks'),btn=$('honorBtn');if(!locks||!btn||locks.closest('.locksMeta'))return;
-    const shell=document.createElement('div');shell.className='locksMeta';locks.parentNode.insertBefore(shell,locks);shell.appendChild(locks);shell.appendChild(btn);btn.title='Доска почёта / Hall of Fame';
+    const locks=$('locks'),btn=$('honorBtn');
+    if(!locks||!btn||locks.closest('.locksMeta'))return;
+    const shell=document.createElement('div');
+    shell.className='locksMeta';
+    locks.parentNode.insertBefore(shell,locks);
+    shell.appendChild(locks);
+    shell.appendChild(btn);
+    btn.title='Доска почёта / Hall of Fame';
   }
 
   async function loadHero(){
-    const hero=document.querySelector('.hero img');if(!hero||hero.dataset.hq==='1'||hero.dataset.hq==='loading')return;
+    const hero=document.querySelector('.hero img');
+    if(!hero||hero.dataset.hq==='1'||hero.dataset.hq==='loading')return;
     hero.dataset.hq='loading';
     try{
-      const parts=await Promise.all(Array.from({length:HERO_PARTS},(_,i)=>fetch(`_hero/p${String(i).padStart(2,'0')}.b64?v=4`,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.text()})));
-      const raw=atob(parts.join('').replace(/\s+/g,''));const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+      const parts=await Promise.all(Array.from({length:HERO_PARTS},(_,i)=>
+        fetch(`_hero/p${String(i).padStart(2,'0')}.b64?v=5`,{cache:'force-cache'})
+          .then(r=>{if(!r.ok)throw new Error(r.status);return r.text()})
+      ));
+      const raw=atob(parts.join('').replace(/\s+/g,''));
+      const bytes=new Uint8Array(raw.length);
+      for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
       const url=URL.createObjectURL(new Blob([bytes],{type:'image/webp'}));
-      hero.onload=()=>{hero.dataset.hq='1';hero.style.opacity='1'};hero.style.opacity='0';hero.style.transition='opacity .15s ease';hero.src=url;
-    }catch(e){hero.dataset.hq='0';hero.style.opacity='1';console.warn('HQ Pushok',e)}
+      hero.onload=()=>{
+        if(heroUrl)URL.revokeObjectURL(heroUrl);
+        heroUrl=url;
+        hero.dataset.hq='1';
+        hero.style.opacity='1';
+      };
+      hero.onerror=()=>{hero.dataset.hq='0';hero.style.opacity='1'};
+      hero.style.opacity='0';
+      hero.style.transition='opacity .15s ease';
+      hero.src=url;
+    }catch(e){
+      hero.dataset.hq='0';
+      hero.style.opacity='1';
+      console.warn('HQ Pushok',e);
+    }
   }
 
-  function cleanVideo(){const v=$('winVideo');if(!v)return;v.removeAttribute('controls');v.controls=false;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','')}
-  function stabilize(){addStyles();ensureKeypad();ensureRows();compactStep();placeHall();cleanVideo()}
+  function cleanVideo(){
+    const v=$('winVideo');
+    if(!v)return;
+    if(v.hasAttribute('controls'))v.removeAttribute('controls');
+    if(v.controls)v.controls=false;
+    if(!v.playsInline)v.playsInline=true;
+    if(!v.hasAttribute('playsinline'))v.setAttribute('playsinline','');
+    if(!v.hasAttribute('webkit-playsinline'))v.setAttribute('webkit-playsinline','');
+  }
 
-  document.addEventListener('DOMContentLoaded',()=>{stabilize();loadHero();new MutationObserver(()=>stabilize()).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','disabled','style']})});
-  document.addEventListener('keydown',e=>{const ae=document.activeElement;if(ae&&ae.id==='playerName')return;if(/^\d$/.test(e.key)){e.preventDefault();typeDigit(e.key)}else if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();erase()}else if(e.key==='Enter'){const ok=$('ok');if(ok&&!ok.disabled){e.preventDefault();ok.click()}}});
+  function stabilize(){
+    addStyles();
+    ensureKeypad();
+    ensureRows();
+    compactStep();
+    placeHall();
+    cleanVideo();
+  }
+
+  function scheduleStabilize(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{
+      scheduled=false;
+      stabilize();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    stabilize();
+    loadHero();
+    const observer=new MutationObserver(mutations=>{
+      if(mutations.some(m=>m.type==='childList'))scheduleStabilize();
+    });
+    observer.observe(document.body,{childList:true,subtree:true});
+  });
+
+  document.addEventListener('keydown',e=>{
+    const ae=document.activeElement;
+    if(ae&&ae.id==='playerName')return;
+    if(/^\d$/.test(e.key)){e.preventDefault();typeDigit(e.key)}
+    else if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();erase()}
+    else if(e.key==='Enter'){
+      const ok=$('ok');
+      if(ok&&!ok.disabled){e.preventDefault();ok.click()}
+    }
+  });
 })();
