@@ -32,33 +32,33 @@ jobs:
           mkdir -p public
           cp index.html public/index.html
           cp -r _parts public/_parts
+          cp -r _hero public/_hero
           cp progress.csv public/progress.csv
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
-          cp game-keypad.js public/game-keypad.js
-          cp pushok-hero.b64 public/pushok-hero.b64
-          if [[ -f pushok_hq.jpg ]]; then
-            cp pushok_hq.jpg public/pushok_hq.jpg
-          fi
+          cp game-ui-v4.js public/game-ui-v4.js
+          cp CNAME public/CNAME
+
           python3 - <<'PY'
           from pathlib import Path
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
-          needle="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          inject="html=html.replace('</head>','<script src=\"game-keypad.js?v=3\"><\\/script></head>');"
-          if 'game-keypad.js?v=3' not in s:
-              if needle not in s:
-                  raise SystemExit('pushok script injection anchor not found')
-              s=s.replace(needle, needle+'\n'+inject, 1)
+          anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
+          inject="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=4\"><\\/script></head>');"
+          if 'game-ui-v4.js?v=4' not in s:
+              if anchor not in s:
+                  raise SystemExit('praise script injection anchor not found')
+              s=s.replace(anchor, anchor+'\n'+inject, 1)
           p.write_text(s,encoding='utf-8')
           PY
+
           test -s public/index.html
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
-          test -s public/game-keypad.js
-          test -s public/pushok-hero.b64
-          grep -q 'Доска почёта' public/index.html
-          grep -q 'game-keypad.js?v=3' public/index.html
+          test -s public/game-ui-v4.js
+          test -s public/_hero/p00.b64
+          test -s public/_hero/p08.b64
+          grep -q 'game-ui-v4.js?v=4' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
