@@ -36,6 +36,7 @@ jobs:
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
           cp game-ui-v4.js public/game-ui-v4.js
+          cp onboarding-v1.js public/onboarding-v1.js
           cp CNAME public/CNAME
 
           # Publish the original user-supplied JPEG byte-for-byte.
@@ -44,16 +45,20 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          import re
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v4\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
-          new="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=8\"><\\/script></head>');"
+          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v1\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
+          game="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=8\"><\\/script></head>');"
+          onboard="html=html.replace('</head>','<script src=\"onboarding-v1.js?v=1\"><\\/script></head>');"
+          if anchor not in s:
+              raise SystemExit('praise script injection anchor not found')
           if 'game-ui-v4.js?v=8' not in s:
-              if anchor not in s:
-                  raise SystemExit('praise script injection anchor not found')
-              s=s.replace(anchor, anchor+'\n'+new, 1)
+              s=s.replace(anchor, anchor+'\n'+game, 1)
+          if 'onboarding-v1.js?v=1' not in s:
+              s=s.replace(game, game+'\n'+onboard, 1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -61,8 +66,10 @@ jobs:
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
           test -s public/game-ui-v4.js
+          test -s public/onboarding-v1.js
           test -s public/pushok_hq.jpg
           grep -q 'game-ui-v4.js?v=8' public/index.html
+          grep -q 'onboarding-v1.js?v=1' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
