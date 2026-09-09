@@ -4,6 +4,7 @@
   let tutorialLang='ru';
   let bypassStart=false;
   let installed=false;
+  let tutorialDone=false;
 
   const slides={
     ru:[
@@ -65,12 +66,12 @@
   }
 
   function show(){tutorialLang=pageLang();step=0;const w=ensureModal();render();w.classList.add('show');w.setAttribute('aria-hidden','false');document.activeElement?.blur?.()}
-  function finish(){const w=$('pk2');if(w){w.classList.remove('show');w.setAttribute('aria-hidden','true')}setPageLang(tutorialLang);bypassStart=true;requestAnimationFrame(()=>{$('nameStart')?.click();bypassStart=false})}
+  function finish(){const w=$('pk2');if(w){w.classList.remove('show');w.setAttribute('aria-hidden','true')}setPageLang(tutorialLang);tutorialDone=true;bypassStart=true;requestAnimationFrame(()=>{$('nameStart')?.click();bypassStart=false})}
 
   function install(){
     if(installed)return;const btn=$('nameStart'),input=$('playerName');if(!btn||!input)return;installed=true;
-    btn.addEventListener('click',e=>{if(bypassStart)return;e.preventDefault();e.stopImmediatePropagation();show()},true);
-    input.addEventListener('keydown',e=>{if(e.key!=='Enter'||bypassStart)return;e.preventDefault();e.stopImmediatePropagation();show()},true);
+    btn.addEventListener('click',e=>{if(bypassStart||tutorialDone)return;e.preventDefault();e.stopImmediatePropagation();show()},true);
+    input.addEventListener('keydown',e=>{if(e.key!=='Enter'||bypassStart||tutorialDone)return;e.preventDefault();e.stopImmediatePropagation();show()},true);
   }
 
   document.addEventListener('DOMContentLoaded',()=>{addStyle();install()});
