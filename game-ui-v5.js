@@ -1,0 +1,246 @@
+(()=>{
+  const TOTAL_ROWS=8;
+  const $=id=>document.getElementById(id);
+  let scheduled=false;
+
+  const css=`
+    :root{--pk-cell:24px;--pk-sign:17px}
+
+    /* Remove duplicated information while keeping every step the same height. */
+    .steps,.mathTitle,.progress{display:none!important}
+    .action{box-sizing:border-box!important;min-height:0!important;padding:10px!important}
+    #actionTitle{display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important}
+    #actionText{height:32px!important;min-height:32px!important;margin:0!important;display:flex!important;align-items:center!important;overflow:hidden!important;line-height:1.18!important}
+    .action.step1-compact #actionText{display:flex!important;visibility:hidden!important}
+    .question,.action.step1-compact .question{height:50px!important;min-height:50px!important;margin-top:5px!important;display:flex!important;align-items:center!important;overflow:hidden!important;box-sizing:border-box!important}
+    .answerRow{height:46px!important;min-height:46px!important;margin-top:6px!important}
+    .answerRow input,.ok{height:46px!important}
+
+    /* Fixed feedback slot: keypad does not move between steps. */
+    .feedback{height:28px!important;min-height:28px!important;margin-top:4px!important;padding:4px 8px!important;overflow:hidden!important;box-sizing:border-box!important;visibility:hidden!important}
+    .feedback.bad{visibility:visible!important}
+    .feedback.good{visibility:hidden!important}
+
+    /* Solved state: one status and one action, no duplicate “Готово”. */
+    .action.pk-clean-solved #actionText,
+    .action.pk-clean-solved .question,
+    .action.pk-clean-solved .feedback,
+    .action.pk-clean-solved #pushok-keypad,
+    .action.pk-clean-solved .answerRow input{display:none!important}
+    .action.pk-clean-solved{padding-bottom:11px!important}
+    .action.pk-clean-solved .stepPill{display:inline-flex!important;margin:0 0 10px!important}
+    .action.pk-clean-solved .answerRow{display:block!important;height:auto!important;min-height:0!important;margin:0!important}
+    .action.pk-clean-solved .answerRow .ok{display:block!important;width:100%!important;min-width:0!important;height:52px!important;margin:0!important;font-size:18px!important}
+
+    /* All possible calculation rows are reserved from frame one. */
+    .mathCard{height:194px!important;min-height:194px!important;max-height:194px!important;overflow:hidden!important;padding-top:6px!important;padding-bottom:4px!important}
+    .corner{height:184px!important;min-height:184px!important;max-height:184px!important;align-items:start!important}
+    .grid{height:184px!important;min-height:184px!important;max-height:184px!important;align-content:start!important;overflow:hidden!important}
+    .mrow{height:var(--pk-cell)!important;min-height:var(--pk-cell)!important;grid-template-columns:var(--pk-sign) repeat(var(--n),var(--pk-cell))!important}
+    .cell,.scell{width:var(--pk-cell)!important;height:var(--pk-cell)!important;font-size:18px!important}
+    .sign{width:var(--pk-sign)!important;height:var(--pk-cell)!important;font-size:14px!important}
+    .rhsRow{height:var(--pk-cell)!important;min-height:var(--pk-cell)!important}
+    .pk-placeholder{visibility:hidden!important;pointer-events:none!important}
+
+    #pushok-keypad{width:100%;margin:6px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;box-sizing:border-box;user-select:none;-webkit-user-select:none}
+    #pushok-keypad button{appearance:none;-webkit-appearance:none;border:1px solid #d9bb7d;border-bottom-width:3px;border-radius:11px;min-height:39px;padding:4px;background:linear-gradient(#fffdf7,#f8ecd1);color:#4a3424;font:900 20px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 0 rgba(104,69,35,.1);touch-action:manipulation}
+    #pushok-keypad button:active{transform:translateY(1px);border-bottom-width:2px;background:#f4e2bd}
+    #pushok-keypad .pk-zero{grid-column:1/span 2}
+    #pushok-keypad .pk-delete{background:linear-gradient(#f7eee4,#ead8c5);color:#65452f}
+
+    .locksMeta{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:7px!important;align-items:stretch!important;margin-top:8px!important}
+    .locksMeta .locks{min-width:0!important;margin-top:0!important}
+    .locksMeta .honorBtn{min-width:46px!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:12px!important}
+
+    .hero img{image-rendering:auto!important;filter:none!important;object-fit:cover!important;object-position:center center!important}
+    .winVideo{pointer-events:none!important}
+    .winVideo::-webkit-media-controls{display:none!important}
+
+    @media(max-width:600px){
+      .locksMeta .honorBtn{width:46px!important;padding:0!important;font-size:0!important}
+      .locksMeta .honorBtn:before{content:'🏆';font-size:19px}
+      .hero{height:228px!important}
+    }
+    @media(max-width:430px){
+      :root{--pk-cell:23px;--pk-sign:16px}
+      .mathCard{height:188px!important;min-height:188px!important;max-height:188px!important}
+      .corner,.grid{height:184px!important;min-height:184px!important;max-height:184px!important}
+      #actionText{height:30px!important;min-height:30px!important;font-size:13px!important}
+      .question,.action.step1-compact .question{height:48px!important;min-height:48px!important}
+      #pushok-keypad button{min-height:38px;font-size:20px}
+    }
+    @media(min-width:760px){
+      :root{--pk-cell:32px;--pk-sign:22px}
+      .mathCard{height:264px!important;min-height:264px!important;max-height:264px!important}
+      .corner,.grid{height:256px!important;min-height:256px!important;max-height:256px!important}
+      .cell,.scell{font-size:23px!important}.sign{font-size:17px!important}
+      #pushok-keypad{grid-template-columns:repeat(5,minmax(0,1fr));max-width:520px}
+      #pushok-keypad .pk-zero{grid-column:auto}
+      #pushok-keypad button{min-height:44px;font-size:21px}
+    }
+  `;
+
+  function addStyles(){
+    if($('pushok-ui-v5-style'))return;
+    const s=document.createElement('style');
+    s.id='pushok-ui-v5-style';
+    s.textContent=css;
+    document.head.appendChild(s);
+  }
+
+  function findAnswer(){
+    return $('answer')||[...document.querySelectorAll('input')].find(el=>el.id!=='playerName'&&!el.closest('.nameGate'))||null;
+  }
+
+  function fireInput(input){input.dispatchEvent(new Event('input',{bubbles:true}))}
+  function typeDigit(d){
+    const input=findAnswer();
+    if(!input||input.disabled)return;
+    let v=String(input.value||'').replace(/\D/g,'');
+    if(v.length>=6)return;
+    input.value=v+d;
+    fireInput(input);
+  }
+  function erase(){
+    const input=findAnswer();
+    if(!input||input.disabled)return;
+    input.value=String(input.value||'').slice(0,-1);
+    fireInput(input);
+  }
+
+  function ensureKeypad(){
+    const input=findAnswer();
+    if(!input)return;
+    if(!input.readOnly)input.readOnly=true;
+    if(input.getAttribute('inputmode')!=='none')input.setAttribute('inputmode','none');
+    if(input.getAttribute('autocomplete')!=='off')input.setAttribute('autocomplete','off');
+
+    let pad=$('pushok-keypad');
+    if(!pad){
+      pad=document.createElement('div');
+      pad.id='pushok-keypad';
+      pad.setAttribute('role','group');
+      pad.setAttribute('aria-label','Цифровая клавиатура');
+      ['1','2','3','4','5','6','7','8','9'].forEach(n=>{
+        const b=document.createElement('button');
+        b.type='button';b.dataset.key=n;b.textContent=n;pad.appendChild(b);
+      });
+      const zero=document.createElement('button');
+      zero.type='button';zero.dataset.key='0';zero.textContent='0';zero.className='pk-zero';pad.appendChild(zero);
+      const del=document.createElement('button');
+      del.type='button';del.dataset.key='back';del.textContent='⌫';del.className='pk-delete';del.setAttribute('aria-label','Стереть');pad.appendChild(del);
+      pad.addEventListener('click',e=>{
+        const b=e.target.closest('button');
+        if(!b)return;
+        b.dataset.key==='back'?erase():typeDigit(b.dataset.key);
+      });
+      const row=input.closest('.answerRow')||input.parentElement;
+      row.insertAdjacentElement('afterend',pad);
+    }
+    const disabled=!!input.disabled;
+    pad.querySelectorAll('button').forEach(b=>{if(b.disabled!==disabled)b.disabled=disabled});
+  }
+
+  function ensureRows(){
+    const grid=$('grid');
+    if(!grid)return;
+    const existing=[...grid.children].filter(x=>x.classList&&x.classList.contains('mrow'));
+    const n=Math.max(1,(existing[0]?.children.length||5)-1);
+    if(existing.length>=TOTAL_ROWS)return;
+    const frag=document.createDocumentFragment();
+    for(let k=existing.length;k<TOTAL_ROWS;k++){
+      const r=document.createElement('div');
+      r.className='mrow pk-placeholder';
+      r.style.setProperty('--n',n);
+      const sg=document.createElement('div');sg.className='sign';sg.innerHTML='&nbsp;';r.appendChild(sg);
+      for(let i=0;i<n;i++){const c=document.createElement('div');c.className='cell';c.innerHTML='&nbsp;';r.appendChild(c)}
+      frag.appendChild(r);
+    }
+    grid.appendChild(frag);
+  }
+
+  function compactStep(){
+    const t=$('actionTitle');
+    if(t&&t.textContent!=='')t.textContent='';
+    const action=document.querySelector('.action');
+    const text=$('actionText');
+    if(!action||!text)return;
+    const wanted=action.classList.contains('step1-compact')?'hidden':'visible';
+    if(text.style.visibility!==wanted)text.style.visibility=wanted;
+  }
+
+  function placeHall(){
+    const locks=$('locks'),btn=$('honorBtn');
+    if(!locks||!btn||locks.closest('.locksMeta'))return;
+    const shell=document.createElement('div');
+    shell.className='locksMeta';
+    locks.parentNode.insertBefore(shell,locks);
+    shell.appendChild(locks);
+    shell.appendChild(btn);
+    btn.title='Доска почёта / Hall of Fame';
+  }
+
+  function ensureHero(){
+    const hero=document.querySelector('.hero img');
+    if(!hero||hero.dataset.directHq==='1')return;
+    hero.dataset.directHq='1';
+    hero.src='pushok_hq.jpg?v=4';
+  }
+
+  function cleanVideo(){
+    const v=$('winVideo');
+    if(!v)return;
+    if(v.hasAttribute('controls'))v.removeAttribute('controls');
+    if(v.controls)v.controls=false;
+    if(!v.playsInline)v.playsInline=true;
+    if(!v.hasAttribute('playsinline'))v.setAttribute('playsinline','');
+    if(!v.hasAttribute('webkit-playsinline'))v.setAttribute('webkit-playsinline','');
+  }
+
+  function syncSolved(){
+    const action=document.querySelector('.action'),input=findAnswer(),ok=$('ok');
+    if(!action||!input||!ok)return;
+    const solved=!!input.disabled&&(ok.classList.contains('next')||/Открыть замок|Open lock/i.test(ok.textContent||''));
+    action.classList.toggle('pk-clean-solved',solved);
+  }
+
+  function stabilize(){
+    addStyles();
+    ensureKeypad();
+    ensureRows();
+    compactStep();
+    syncSolved();
+    placeHall();
+    ensureHero();
+    cleanVideo();
+  }
+
+  function scheduleStabilize(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{scheduled=false;stabilize()});
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    stabilize();
+    const observer=new MutationObserver(mutations=>{
+      if(mutations.some(m=>m.type==='childList'))scheduleStabilize();
+    });
+    observer.observe(document.body,{childList:true,subtree:true});
+  });
+
+  document.addEventListener('click',e=>{
+    if(e.target.closest?.('#ok'))requestAnimationFrame(syncSolved);
+  },true);
+
+  document.addEventListener('keydown',e=>{
+    const ae=document.activeElement;
+    if(ae&&ae.id==='playerName')return;
+    if(/^\d$/.test(e.key)){e.preventDefault();typeDigit(e.key)}
+    else if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();erase()}
+    else if(e.key==='Enter'){
+      const ok=$('ok');
+      if(ok&&!ok.disabled){e.preventDefault();ok.click()}
+    }
+  });
+})();
