@@ -35,12 +35,9 @@ jobs:
           cp progress.csv public/progress.csv
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
-          cp game-ui-v4.js public/game-ui-v4.js
-          cp onboarding-v1.js public/onboarding-v1.js
+          cp game-ui-v5.js public/game-ui-v5.js
+          cp onboarding-v2.js public/onboarding-v2.js
           cp CNAME public/CNAME
-
-          # The name gate uses z-index 1100. Keep the tutorial safely above it.
-          sed -i 's/z-index:100;/z-index:5000;/' public/onboarding-v1.js
 
           # Publish the original user-supplied JPEG byte-for-byte.
           test -s pushok_hq.jpg
@@ -52,28 +49,27 @@ jobs:
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v4\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
-          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v1\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
-          game="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=8\"><\\/script></head>');"
-          onboard="html=html.replace('</head>','<script src=\"onboarding-v1.js?v=2\"><\\/script></head>');"
+          # Remove any previously injected UI/onboarding loader lines from older builds.
+          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v[45]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
+          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v[12]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
+          game="html=html.replace('</head>','<script src=\"game-ui-v5.js?v=1\"><\\/script></head>');"
+          onboard="html=html.replace('</head>','<script src=\"onboarding-v2.js?v=1\"><\\/script></head>');"
           if anchor not in s:
               raise SystemExit('praise script injection anchor not found')
-          if 'game-ui-v4.js?v=8' not in s:
-              s=s.replace(anchor, anchor+'\n'+game, 1)
-          if 'onboarding-v1.js?v=2' not in s:
-              s=s.replace(game, game+'\n'+onboard, 1)
+          s=s.replace(anchor, anchor+'\n'+game+'\n'+onboard, 1)
           p.write_text(s,encoding='utf-8')
           PY
 
           test -s public/index.html
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
-          test -s public/game-ui-v4.js
-          test -s public/onboarding-v1.js
+          test -s public/game-ui-v5.js
+          test -s public/onboarding-v2.js
           test -s public/pushok_hq.jpg
-          grep -q 'game-ui-v4.js?v=8' public/index.html
-          grep -q 'onboarding-v1.js?v=2' public/index.html
-          grep -q 'z-index:5000' public/onboarding-v1.js
+          grep -q 'game-ui-v5.js?v=1' public/index.html
+          grep -q 'onboarding-v2.js?v=1' public/index.html
+          grep -q 'pushok_hq.jpg?v=4' public/game-ui-v5.js
+          grep -q 'Вот что значит «снести цифру»' public/onboarding-v2.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
