@@ -39,6 +39,9 @@ jobs:
           cp onboarding-v1.js public/onboarding-v1.js
           cp CNAME public/CNAME
 
+          # The name gate uses z-index 1100. Keep the tutorial safely above it.
+          sed -i 's/z-index:100;/z-index:5000;/' public/onboarding-v1.js
+
           # Publish the original user-supplied JPEG byte-for-byte.
           test -s pushok_hq.jpg
           cp pushok_hq.jpg public/pushok_hq.jpg
@@ -52,12 +55,12 @@ jobs:
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v4\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v1\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           game="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=8\"><\\/script></head>');"
-          onboard="html=html.replace('</head>','<script src=\"onboarding-v1.js?v=1\"><\\/script></head>');"
+          onboard="html=html.replace('</head>','<script src=\"onboarding-v1.js?v=2\"><\\/script></head>');"
           if anchor not in s:
               raise SystemExit('praise script injection anchor not found')
           if 'game-ui-v4.js?v=8' not in s:
               s=s.replace(anchor, anchor+'\n'+game, 1)
-          if 'onboarding-v1.js?v=1' not in s:
+          if 'onboarding-v1.js?v=2' not in s:
               s=s.replace(game, game+'\n'+onboard, 1)
           p.write_text(s,encoding='utf-8')
           PY
@@ -69,7 +72,8 @@ jobs:
           test -s public/onboarding-v1.js
           test -s public/pushok_hq.jpg
           grep -q 'game-ui-v4.js?v=8' public/index.html
-          grep -q 'onboarding-v1.js?v=1' public/index.html
+          grep -q 'onboarding-v1.js?v=2' public/index.html
+          grep -q 'z-index:5000' public/onboarding-v1.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
