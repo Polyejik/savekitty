@@ -49,11 +49,10 @@ jobs:
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          # Remove any previously injected UI/onboarding loader lines from older builds.
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v[45]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v[12]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           game="html=html.replace('</head>','<script src=\"game-ui-v5.js?v=1\"><\\/script></head>');"
-          onboard="html=html.replace('</head>','<script src=\"onboarding-v2.js?v=1\"><\\/script></head>');"
+          onboard="html=html.replace('</head>','<script src=\"onboarding-v2.js?v=2\"><\\/script></head>');"
           if anchor not in s:
               raise SystemExit('praise script injection anchor not found')
           s=s.replace(anchor, anchor+'\n'+game+'\n'+onboard, 1)
@@ -67,9 +66,10 @@ jobs:
           test -s public/onboarding-v2.js
           test -s public/pushok_hq.jpg
           grep -q 'game-ui-v5.js?v=1' public/index.html
-          grep -q 'onboarding-v2.js?v=1' public/index.html
+          grep -q 'onboarding-v2.js?v=2' public/index.html
           grep -q 'pushok_hq.jpg?v=4' public/game-ui-v5.js
           grep -q 'Вот что значит «снести цифру»' public/onboarding-v2.js
+          grep -q 'tutorialDone=true' public/onboarding-v2.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
