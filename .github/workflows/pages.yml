@@ -32,23 +32,28 @@ jobs:
           mkdir -p public
           cp index.html public/index.html
           cp -r _parts public/_parts
-          cp -r _hero public/_hero
           cp progress.csv public/progress.csv
           cp Kotik.mp4 public/Kotik.mp4
           cp pushok-praise.js public/pushok-praise.js
           cp game-ui-v4.js public/game-ui-v4.js
           cp CNAME public/CNAME
 
+          # If the original user-supplied JPEG exists in the repository,
+          # publish it byte-for-byte. No WebP conversion, resize or recompression.
+          if [[ -f pushok_hq.jpg ]]; then
+            cp pushok_hq.jpg public/pushok_hq.jpg
+          fi
+
           python3 - <<'PY'
           from pathlib import Path
           p=Path('public/index.html')
           s=p.read_text(encoding='utf-8')
           anchor="html=html.replace('</head>','<script src=\"pushok-praise.js?v=2\"><\\/script></head>');"
-          old="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=4\"><\\/script></head>');"
-          new="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=5\"><\\/script></head>');"
-          if old in s:
-              s=s.replace(old,new)
-          elif 'game-ui-v4.js?v=5' not in s:
+          for oldver in ('4','5'):
+              old=f"html=html.replace('</head>','<script src=\"game-ui-v4.js?v={oldver}\"><\\/script></head>');"
+              s=s.replace(old,"")
+          new="html=html.replace('</head>','<script src=\"game-ui-v4.js?v=6\"><\\/script></head>');"
+          if 'game-ui-v4.js?v=6' not in s:
               if anchor not in s:
                   raise SystemExit('praise script injection anchor not found')
               s=s.replace(anchor, anchor+'\n'+new, 1)
@@ -59,9 +64,7 @@ jobs:
           test -s public/Kotik.mp4
           test -s public/pushok-praise.js
           test -s public/game-ui-v4.js
-          test -s public/_hero/p00.b64
-          test -s public/_hero/p08.b64
-          grep -q 'game-ui-v4.js?v=5' public/index.html
+          grep -q 'game-ui-v4.js?v=6' public/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
