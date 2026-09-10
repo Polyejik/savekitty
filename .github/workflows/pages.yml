@@ -52,7 +52,7 @@ jobs:
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v[45]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v[123]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           game="html=html.replace('</head>','<script src=\"game-ui-v5.js?v=1\"><\\/script></head>');"
-          onboard="html=html.replace('</head>','<script src=\"onboarding-v3.js?v=1\"><\\/script></head>');"
+          onboard="html=html.replace('</head>','<script src=\"onboarding-v3.js?v=2\"><\\/script></head>');"
           if anchor not in s:
               raise SystemExit('praise script injection anchor not found')
           s=s.replace(anchor, anchor+'\n'+game+'\n'+onboard, 1)
@@ -66,11 +66,12 @@ jobs:
           test -s public/onboarding-v3.js
           test -s public/pushok_hq.jpg
           grep -q 'game-ui-v5.js?v=1' public/index.html
-          grep -q 'onboarding-v3.js?v=1' public/index.html
+          grep -q 'onboarding-v3.js?v=2' public/index.html
           grep -q 'pushok_hq.jpg?v=4' public/game-ui-v5.js
           grep -q 'Сносим цифру' public/onboarding-v3.js
           grep -q 'Я Пушок' public/onboarding-v3.js
-          grep -q 'pk2-coach' public/onboarding-v3.js
+          grep -q 'getNameCatSrc' public/onboarding-v3.js
+          grep -q 'pk2-down4' public/onboarding-v3.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
