@@ -37,6 +37,7 @@ jobs:
           cp pushok-praise.js public/pushok-praise.js
           cp game-ui-v5.js public/game-ui-v5.js
           cp onboarding-v5.js public/onboarding-v5.js
+          cp onboarding-skip-v1.js public/onboarding-skip-v1.js
           cp hint-ui-v1.js public/hint-ui-v1.js
           cp locks-ui-v1.js public/locks-ui-v1.js
           cp CNAME public/CNAME
@@ -54,15 +55,17 @@ jobs:
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"game-ui-v[45]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"intro-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-v[12345]\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
+          s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"onboarding-skip-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"hint-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           s=re.sub(r"html=html\.replace\('</head>','<script src=\\\"locks-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",'',s)
           game="html=html.replace('</head>','<script src=\"game-ui-v5.js?v=1\"><\\/script></head>');"
           onboard="html=html.replace('</head>','<script src=\"onboarding-v5.js?v=1\"><\\/script></head>');"
+          skip="html=html.replace('</head>','<script src=\"onboarding-skip-v1.js?v=1\"><\\/script></head>');"
           hint="html=html.replace('</head>','<script src=\"hint-ui-v1.js?v=1\"><\\/script></head>');"
           locks="html=html.replace('</head>','<script src=\"locks-ui-v1.js?v=1\"><\\/script></head>');"
           if anchor not in s:
               raise SystemExit('praise script injection anchor not found')
-          s=s.replace(anchor, anchor+'\n'+game+'\n'+onboard+'\n'+hint+'\n'+locks, 1)
+          s=s.replace(anchor, anchor+'\n'+game+'\n'+onboard+'\n'+skip+'\n'+hint+'\n'+locks, 1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -71,11 +74,13 @@ jobs:
           test -s public/pushok-praise.js
           test -s public/game-ui-v5.js
           test -s public/onboarding-v5.js
+          test -s public/onboarding-skip-v1.js
           test -s public/hint-ui-v1.js
           test -s public/locks-ui-v1.js
           test -s public/pushok_hq.jpg
           grep -q 'game-ui-v5.js?v=1' public/index.html
           grep -q 'onboarding-v5.js?v=1' public/index.html
+          grep -q 'onboarding-skip-v1.js?v=1' public/index.html
           grep -q 'hint-ui-v1.js?v=1' public/index.html
           grep -q 'locks-ui-v1.js?v=1' public/index.html
           ! grep -q 'intro-v1.js' public/index.html
@@ -84,6 +89,7 @@ jobs:
           grep -q 'Я так рад, что ты пришёл' public/onboarding-v5.js
           grep -q 'у нас было 84 котлетки' public/onboarding-v5.js
           grep -q 'sessionStorage.setItem' public/onboarding-v5.js
+          grep -q 'Пропустить обучение' public/onboarding-skip-v1.js
           grep -q 'Таблица на' public/hint-ui-v1.js
           grep -q '.lock.current' public/locks-ui-v1.js
 
