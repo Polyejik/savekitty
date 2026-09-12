@@ -30,7 +30,7 @@ jobs:
           rm -rf public && mkdir -p public
           cp index.html public/index.html
           cp -r _parts public/_parts
-          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js share-ui-v2.js name-memory-v1.js supabase-config.js supabase-sync-v2.js public/
+          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js share-ui-v3.js name-memory-v2.js finish-ui-v1.js supabase-config.js supabase-sync-v2.js public/
           cp -r dashboard public/dashboard
           cp CNAME public/CNAME
           test -s pushok_hq.jpg && cp pushok_hq.jpg public/pushok_hq.jpg
@@ -48,22 +48,27 @@ jobs:
             r"html=html\.replace\('</head>','<script src=\\\"locks-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"share-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"name-memory-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
+            r"html=html\.replace\('</head>','<script src=\\\"finish-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"supabase-config\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"supabase-sync-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);"
           ]
           for pat in patterns:s=re.sub(pat,'',s)
-          scripts=['game-ui-v5.js?v=1','onboarding-v5.js?v=1','onboarding-skip-v1.js?v=1','hint-ui-v1.js?v=1','locks-ui-v1.js?v=1','share-ui-v2.js?v=2','name-memory-v1.js?v=1','supabase-config.js?v=2','supabase-sync-v2.js?v=2']
+          scripts=['game-ui-v5.js?v=1','onboarding-v5.js?v=1','onboarding-skip-v1.js?v=1','hint-ui-v1.js?v=1','locks-ui-v1.js?v=1','finish-ui-v1.js?v=1','share-ui-v3.js?v=3','name-memory-v2.js?v=2','supabase-config.js?v=2','supabase-sync-v2.js?v=2']
           if anchor not in s:raise SystemExit('praise script injection anchor not found')
           inject='\n'.join("html=html.replace('</head>','<script src=\"%s\"><\\/script></head>');"%x for x in scripts)
           s=s.replace(anchor,anchor+'\n'+inject,1);p.write_text(s,encoding='utf-8')
           PY
-          for f in index.html Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js share-ui-v2.js name-memory-v1.js supabase-config.js supabase-sync-v2.js pushok_hq.jpg dashboard/index.html dashboard/config.js; do test -s "public/$f"; done
-          grep -q 'share-ui-v2.js?v=2' public/index.html
-          grep -q 'name-memory-v1.js?v=1' public/index.html
-          ! grep -q 'share-ui-v1.js?v=1' public/index.html
-          grep -q 't.me/share/url' public/share-ui-v2.js
-          grep -q 'max.ru/:share' public/share-ui-v2.js
-          grep -q 'savekitty_player_name_v1' public/name-memory-v1.js
+          for f in index.html Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js finish-ui-v1.js share-ui-v3.js name-memory-v2.js supabase-config.js supabase-sync-v2.js pushok_hq.jpg dashboard/index.html dashboard/config.js; do test -s "public/$f"; done
+          grep -q 'share-ui-v3.js?v=3' public/index.html
+          grep -q 'name-memory-v2.js?v=2' public/index.html
+          grep -q 'finish-ui-v1.js?v=1' public/index.html
+          ! grep -q 'share-ui-v2.js?v=2' public/index.html
+          grep -q 't.me/share/url' public/share-ui-v3.js
+          grep -q 'max.ru/:share' public/share-ui-v3.js
+          grep -q 'savekitty_challenge_v1' public/share-ui-v3.js
+          grep -q 'savekitty_player_name_v1' public/name-memory-v2.js
+          grep -q 'position:fixed' public/finish-ui-v1.js
+          grep -q 'og:image' public/index.html
           grep -q 'save-pushok-pilot' public/supabase-config.js
           grep -q 'Storage.prototype.setItem' public/supabase-sync-v2.js
           grep -q 'Sponsor Dashboard' public/dashboard/index.html
