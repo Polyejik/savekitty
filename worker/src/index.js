@@ -50,7 +50,7 @@ export default {
         ok: true,
         service: "spasipushka-api",
         hyperdrive: Boolean(env.HYPERDRIVE?.connectionString),
-        version: "hyperdrive-v1",
+        version: "hyperdrive-v1.1",
       });
     }
 
