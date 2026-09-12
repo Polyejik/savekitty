@@ -40,6 +40,7 @@ jobs:
           cp onboarding-skip-v1.js public/onboarding-skip-v1.js
           cp hint-ui-v1.js public/hint-ui-v1.js
           cp locks-ui-v1.js public/locks-ui-v1.js
+          cp share-ui-v1.js public/share-ui-v1.js
           cp supabase-config.js public/supabase-config.js
           cp supabase-sync-v2.js public/supabase-sync-v2.js
           cp -r dashboard public/dashboard
@@ -61,6 +62,7 @@ jobs:
             r"html=html\.replace\('</head>','<script src=\\\"onboarding-skip-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"hint-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"locks-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
+            r"html=html\.replace\('</head>','<script src=\\\"share-ui-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"supabase-config\.js\?v=\d+\\\"><\\\\/script></head>'\);",
             r"html=html\.replace\('</head>','<script src=\\\"supabase-sync-v\d+\.js\?v=\d+\\\"><\\\\/script></head>'\);"
           ]
@@ -70,10 +72,11 @@ jobs:
           skip="html=html.replace('</head>','<script src=\"onboarding-skip-v1.js?v=1\"><\\/script></head>');"
           hint="html=html.replace('</head>','<script src=\"hint-ui-v1.js?v=1\"><\\/script></head>');"
           locks="html=html.replace('</head>','<script src=\"locks-ui-v1.js?v=1\"><\\/script></head>');"
+          share="html=html.replace('</head>','<script src=\"share-ui-v1.js?v=1\"><\\/script></head>');"
           cfg="html=html.replace('</head>','<script src=\"supabase-config.js?v=2\"><\\/script></head>');"
           sync="html=html.replace('</head>','<script src=\"supabase-sync-v2.js?v=2\"><\\/script></head>');"
           if anchor not in s:raise SystemExit('praise script injection anchor not found')
-          s=s.replace(anchor,anchor+'\n'+game+'\n'+onboard+'\n'+skip+'\n'+hint+'\n'+locks+'\n'+cfg+'\n'+sync,1)
+          s=s.replace(anchor,anchor+'\n'+game+'\n'+onboard+'\n'+skip+'\n'+hint+'\n'+locks+'\n'+share+'\n'+cfg+'\n'+sync,1)
           p.write_text(s,encoding='utf-8')
           PY
 
@@ -85,16 +88,20 @@ jobs:
           test -s public/onboarding-skip-v1.js
           test -s public/hint-ui-v1.js
           test -s public/locks-ui-v1.js
+          test -s public/share-ui-v1.js
           test -s public/supabase-config.js
           test -s public/supabase-sync-v2.js
           test -s public/pushok_hq.jpg
           test -s public/dashboard/index.html
           test -s public/dashboard/config.js
+          grep -q 'share-ui-v1.js?v=1' public/index.html
           grep -q 'supabase-config.js?v=2' public/index.html
           grep -q 'supabase-sync-v2.js?v=2' public/index.html
           ! grep -q 'supabase-sync-v1.js' public/index.html
           grep -q 'save-pushok-pilot' public/supabase-config.js
           grep -q 'Storage.prototype.setItem' public/supabase-sync-v2.js
+          grep -q 't.me/share/url' public/share-ui-v1.js
+          grep -q 'max.ru/:share' public/share-ui-v1.js
           grep -q 'Sponsor Dashboard' public/dashboard/index.html
 
       - name: Setup Pages
