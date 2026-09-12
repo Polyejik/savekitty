@@ -1,0 +1,4 @@
+(()=>{
+const css=`#finish{box-sizing:border-box!important;max-width:none!important}.winVideo,#winVideo{display:block!important;width:min(680px,100%)!important;height:auto!important;max-height:48dvh!important;object-fit:contain!important;object-position:center center!important;margin:0 auto 10px!important;border-radius:18px!important;background:#120d0a!important}@media(max-width:600px){#finish{position:fixed!important;inset:0!important;z-index:10000!important;width:100vw!important;height:100dvh!important;max-height:none!important;overflow-y:auto!important;padding:12px 10px 24px!important;background:#17110e!important}.winVideo,#winVideo{width:100%!important;max-height:45dvh!important;border-radius:16px!important}}`;
+let s=document.createElement('style');s.textContent=css;document.head.appendChild(s);
+})();
