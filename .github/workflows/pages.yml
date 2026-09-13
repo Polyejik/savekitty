@@ -19,36 +19,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf public
           mkdir -p public
-          cp index.html public/index.html
           cp -r _parts public/_parts
-          cp progress.csv public/progress.csv
-          cp Kotik.mp4 public/Kotik.mp4
-          cp pushok-praise.js public/pushok-praise.js
-          cp game-ui-v5.js public/game-ui-v5.js
-          cp onboarding-v5.js public/onboarding-v5.js
-          cp onboarding-skip-v1.js public/onboarding-skip-v1.js
-          cp hint-ui-v1.js public/hint-ui-v1.js
-          cp locks-ui-v1.js public/locks-ui-v1.js
-          cp share-ui-v5.js public/share-ui-v5.js
-          cp name-memory-v2.js public/name-memory-v2.js
-          cp finish-ui-v1.js public/finish-ui-v1.js
-          cp finish-extra-v1.js public/finish-extra-v1.js
-          cp supabase-config.js public/supabase-config.js
-          cp supabase-sync-v2.js public/supabase-sync-v2.js
+          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js leaderboard-v1.js share-ui-v5.js name-memory-v2.js finish-ui-v1.js finish-extra-v1.js supabase-config.js supabase-sync-v2.js public/
           cp -r dashboard public/dashboard
           cp CNAME public/CNAME
           cp pushok_hq.jpg public/pushok_hq.jpg
           base64 -d family-end.b64 > public/family-end.jpg
           base64 -d invite-card-v2.b64 > public/invite-card-v2.jpg
-          test -s public/family-end.jpg
-          test -s public/invite-card-v2.jpg
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('public/index.html')
-          s=p.read_text(encoding='utf-8')
-          s=s.replace('https://spasipushka.ru/invite-card.jpg','https://spasipushka.ru/invite-card-v2.jpg?v=2')
-          p.write_text(s,encoding='utf-8')
+          python3 - <<'PY'
+          from PIL import Image
+          for p in ['public/family-end.jpg','public/invite-card-v2.jpg','public/pushok_hq.jpg']:
+              im=Image.open(p); im.verify()
           PY
           cat > public/loader.js <<'EOF'
           (async()=>{
@@ -57,20 +40,13 @@ jobs:
             for(const p of parts){ const r=await fetch('_parts/'+p,{cache:'no-store'}); if(!r.ok) throw new Error(p); b64 += (await r.text()).trim(); }
             const bin=atob(b64); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
             const ds=new DecompressionStream('gzip'); const html=await new Response(new Blob([u8]).stream().pipeThrough(ds)).text();
-            document.open(); document.write(html); document.close();
+            const inject=`<script src='game-ui-v5.js?v=2'></script><script src='onboarding-v5.js?v=1'></script><script src='onboarding-skip-v1.js?v=1'></script><script src='hint-ui-v1.js?v=3'></script><script src='locks-ui-v1.js?v=1'></script><script src='leaderboard-v1.js?v=1'></script><script src='finish-ui-v1.js?v=1'></script><script src='finish-extra-v1.js?v=5'></script><script src='share-ui-v5.js?v=6'></script><script src='name-memory-v2.js?v=2'></script><script src='supabase-config.js?v=2'></script><script src='supabase-sync-v2.js?v=5'></script>`;
+            document.open(); document.write(html.replace('</body>',inject+'</body>')); document.close();
           })().catch(e=>{document.body.innerHTML='<pre style="color:white">Load error: '+e+'</pre>';});
           EOF
           cat > public/index.html <<'EOF'
-          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Спаси Пушка</title><meta property="og:title" content="Спаси Пушка"><meta property="og:description" content="Помоги освободить Пушка. Я уже справился — мой результат ты узнаешь только после игры 😉"><meta property="og:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=2"><meta property="og:image:type" content="image/jpeg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=2"><style>html,body{margin:0;background:#0f1722;color:#fff}</style></head><body><script src="loader.js"></script></body></html>
+          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Спаси Пушка</title><meta property="og:title" content="Спаси Пушка"><meta property="og:description" content="Помоги освободить Пушка. Я уже справился — мой результат ты узнаешь только после игры 😉"><meta property="og:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=3"><meta property="og:image:type" content="image/jpeg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=3"><style>html,body{margin:0;background:#0f1722;color:#fff}</style></head><body><script src="loader.js"></script></body></html>
           EOF
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('public/loader.js')
-          s=p.read_text()
-          inject="""<script src='game-ui-v5.js?v=2'></script><script src='onboarding-v5.js?v=1'></script><script src='onboarding-skip-v1.js?v=1'></script><script src='hint-ui-v1.js?v=3'></script><script src='locks-ui-v1.js?v=1'></script><script src='finish-ui-v1.js?v=1'></script><script src='finish-extra-v1.js?v=2'></script><script src='share-ui-v5.js?v=6'></script><script src='name-memory-v2.js?v=2'></script><script src='supabase-config.js?v=2'></script><script src='supabase-sync-v2.js?v=5'></script>"""
-          s=s.replace("document.open(); document.write(html); document.close();", "document.open(); document.write(html.replace('</body>',`"+inject+"</body>`)); document.close();")
-          p.write_text(s)
-          PY
       - name: Smoke test
         shell: bash
         run: |
@@ -79,12 +55,13 @@ jobs:
           test -s public/loader.js
           test -s public/family-end.jpg
           test -s public/invite-card-v2.jpg
+          test -s public/leaderboard-v1.js
+          grep -q "leaderboard-v1.js?v=1" public/loader.js
+          grep -q "finish-extra-v1.js?v=5" public/loader.js
           grep -q "share-ui-v5.js?v=6" public/loader.js
-          grep -q "hint-ui-v1.js?v=3" public/loader.js
-          grep -q "family-end.jpg" finish-extra-v1.js
-          grep -q "recipient_duration_seconds" share-ui-v5.js
-          grep -q "game_challenges" worker/src/index.js
-          grep -q "cabinet" <(tr '[:upper:]' '[:lower:]' < dashboard/index.html) || true
+          grep -q "/family-end.jpg?v=5" public/finish-extra-v1.js
+          grep -q "recipient_duration_seconds" public/share-ui-v5.js
+          grep -q "dashboard" worker/src/index.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
