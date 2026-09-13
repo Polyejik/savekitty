@@ -10,11 +10,13 @@ const fs=require('node:fs');const path=require('node:path');
  const payload=[cid,'save-pushok-pilot','5416352f-7852-4fe6-a80f-335857c5470c','QA','ru',new Date(Date.now()-100000).toISOString(),new Date().toISOString(),100,'test'];
  await db.query(insert,payload);await db.query(insert,payload);
  assert.equal((await db.query('SELECT count(*)::int n FROM game_runs')).rows[0].n,1,'retry must not duplicate completion');
+ await db.query(insert,['87e9a09e-abbe-4cbb-a566-241a233721c9',...payload.slice(1)]);
+ const cte=src.match(/const confirmedCte = `([\s\S]*?)`/)[1];
  const dash=src.slice(src.indexOf('if (url.pathname === "/dashboard"'));
  let count=0;for(const m of dash.matchAll(/await c.query\(\s*`([\s\S]*?)`/g)){
-  const r=await db.query(m[1],m[1].includes('$1')?['save-pushok-pilot']:[]);count++;
-  if(m[1].includes('raw_runs')){assert.equal(r.rows[0].raw_runs,1);assert.equal(r.rows[0].confirmed_rescues,1)}
+  const query=m[1].replace('${confirmedCte}',cte);const r=await db.query(query,query.includes('$1')?['save-pushok-pilot']:[]);count++;
+  if(m[1].includes('raw_runs')){assert.equal(r.rows[0].raw_runs,2);assert.equal(r.rows[0].confirmed_rescues,1);assert.equal(r.rows[0].duplicates,1)}
   if(m[1].includes('generate_series'))assert.equal(r.rows.length,14);
  }
- assert.equal(count,7);await db.close();console.log('PASS: all 7 dashboard queries execute on PostgreSQL; duplicate completion produces one confirmed run.');
+ assert.equal(count,7);await db.close();console.log('PASS: all 7 dashboard queries execute on PostgreSQL; retry is idempotent; old exact duplicates count once in sponsor totals.');
 })().catch(e=>{console.error(e);process.exit(1)});

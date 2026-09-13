@@ -262,34 +262,45 @@ export default {
           ).rows[0];
           if (!camp) return null;
 
+          // Older clients retried without completion_id. Count an exact event once,
+          // while retaining every stored request in the raw/duplicate audit totals.
+          const confirmedCte = `WITH ranked_confirmed AS (
+            SELECT *, row_number() OVER (
+              PARTITION BY player_id,started_at,completed_at,duration_seconds
+              ORDER BY created_at,id
+            ) AS event_rank
+            FROM public.game_runs WHERE campaign_id=$1 AND status='confirmed'
+          ), confirmed_runs AS (SELECT * FROM ranked_confirmed WHERE event_rank=1)`;
+
           const s = (
             await c.query(
-              `SELECT
-                 count(*)::int raw_runs,
-                 count(*) FILTER(WHERE status='confirmed')::int confirmed_rescues,
-                 count(DISTINCT player_id) FILTER(WHERE status='confirmed')::int unique_players,
-                 count(*) FILTER(WHERE status='confirmed' AND completed_at>=date_trunc('day',now()))::int today_runs,
-                 coalesce(round(avg(duration_seconds) FILTER(WHERE status='confirmed')),0)::int avg_seconds,
-                 coalesce(sum(duration_seconds) FILTER(WHERE status='confirmed'),0)::bigint confirmed_seconds,
-                 count(*) FILTER(WHERE status='duplicate')::int duplicates,
-                 count(*) FILTER(WHERE status='too_fast')::int too_fast
-               FROM public.game_runs WHERE campaign_id=$1`, [campaign]
+              `${confirmedCte} SELECT
+                 (SELECT count(*)::int FROM public.game_runs WHERE campaign_id=$1) AS raw_runs,
+                 count(*)::int confirmed_rescues,
+                 count(DISTINCT player_id)::int unique_players,
+                 count(*) FILTER(WHERE completed_at>=date_trunc('day',now()))::int today_runs,
+                 coalesce(round(avg(duration_seconds)),0)::int avg_seconds,
+                 coalesce(sum(duration_seconds),0)::bigint confirmed_seconds,
+                 ((SELECT count(*) FROM public.game_runs WHERE campaign_id=$1 AND status='duplicate')
+                   + (SELECT count(*) FROM ranked_confirmed WHERE event_rank>1))::int duplicates,
+                 (SELECT count(*)::int FROM public.game_runs WHERE campaign_id=$1 AND status='too_fast') AS too_fast
+               FROM confirmed_runs`, [campaign]
             )
           ).rows[0];
 
           const repeat = (
             await c.query(
-              `SELECT coalesce(round(100.0*count(*) FILTER(WHERE n>1)/nullif(count(*),0)),0)::int repeat_rate
-               FROM (SELECT player_id,count(*) n FROM public.game_runs
+              `${confirmedCte} SELECT coalesce(round(100.0*count(*) FILTER(WHERE n>1)/nullif(count(*),0)),0)::int repeat_rate
+               FROM (SELECT player_id,count(*) n FROM confirmed_runs
                      WHERE campaign_id=$1 AND status='confirmed' GROUP BY player_id)x`, [campaign]
             )
           ).rows[0];
 
           const daily = (
             await c.query(
-              `WITH d AS(SELECT generate_series(current_date-13,current_date,interval '1 day')::date AS report_day)
+              `${confirmedCte}, d AS(SELECT generate_series(current_date-13,current_date,interval '1 day')::date AS report_day)
                SELECT d.report_day AS day,count(g.id)::int value FROM d
-               LEFT JOIN public.game_runs g ON g.campaign_id=$1 AND g.status='confirmed'
+               LEFT JOIN confirmed_runs g ON g.campaign_id=$1 AND g.status='confirmed'
                  AND g.completed_at>=d.report_day AND g.completed_at<d.report_day+interval '1 day'
                GROUP BY d.report_day ORDER BY d.report_day`, [campaign]
             )
@@ -297,7 +308,7 @@ export default {
 
           const pace = (
             await c.query(
-              `SELECT coalesce(round(count(*)::numeric/7,1),0) pace_7d FROM public.game_runs
+              `${confirmedCte} SELECT coalesce(round(count(*)::numeric/7,1),0) pace_7d FROM confirmed_runs
                WHERE campaign_id=$1 AND status='confirmed' AND completed_at>=now()-interval '7 days'`, [campaign]
             )
           ).rows[0];
@@ -312,11 +323,10 @@ export default {
 
           const runs = (
             await c.query(
-              `SELECT completed_at,
+              `${confirmedCte} SELECT completed_at,
                       'Участник '||upper(substr(md5(player_id::text),1,5)) AS participant,
                       duration_seconds,game_version,campaign_id,status
-               FROM public.game_runs WHERE campaign_id=$1 AND status='confirmed'
-               ORDER BY completed_at DESC LIMIT 20`, [campaign]
+               FROM confirmed_runs ORDER BY completed_at DESC LIMIT 20`, [campaign]
             )
           ).rows;
 
