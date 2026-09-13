@@ -21,7 +21,20 @@
   function data(){return rows().filter(r=>r&&(r.event==='completed'||r.completed===true)&&sec(r)>0).map(r=>({name:name(r),sec:sec(r)})).sort((a,b)=>a.sec-b.sec).slice(0,10)}
   function fallback(){let m=q('#sk-honor-fallback');if(m)return m;m=document.createElement('div');m.id='sk-honor-fallback';m.innerHTML='<div class="sk-card"><div class="sk-head"><h3>🏆 Доска почёта</h3><button class="sk-x" type="button">×</button></div><div class="sk-list"></div></div>';document.body.appendChild(m);m.querySelector('.sk-x').onclick=()=>m.classList.remove('show');m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')});return m}
   function openFallback(){const m=fallback(),a=data(),list=m.querySelector('.sk-list');list.innerHTML=a.length?a.map((x,i)=>`<div class="sk-hrow"><div class="sk-rank">${i+1}</div><div class="sk-name"></div><div class="sk-time">${fmt(x.sec)}</div></div>`).join(''):'<div class="sk-empty">Заверши игру — результат появится здесь.</div>';[...list.querySelectorAll('.sk-name')].forEach((el,i)=>el.textContent=a[i].name);m.classList.add('show')}
-  function ensure(){addStyle();const locks=q('#locks');if(!locks)return;let shell=locks.closest('.locksMeta');if(!shell){shell=document.createElement('div');shell.className='locksMeta';locks.parentNode.insertBefore(shell,locks);shell.appendChild(locks)}let btn=q('#honorBtn');if(!btn){btn=document.createElement('button');btn.id='honorBtn';btn.type='button';btn.className='honorBtn';btn.textContent='🏆';btn.title='Доска почёта / Hall of Fame';btn.setAttribute('aria-label','Доска почёта');btn.onclick=openFallback}btn.classList.add('sk-restored');btn.textContent='🏆';if(btn.parentNode!==shell)shell.appendChild(btn)}
-  const start=ensure;
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+  function ensure(){
+    addStyle();
+    const locks=q('#locks');if(!locks)return false;
+    let shell=locks.closest('.locksMeta');
+    if(!shell){shell=document.createElement('div');shell.className='locksMeta';locks.parentNode.insertBefore(shell,locks);shell.appendChild(locks)}
+    let btn=q('#honorBtn');
+    if(!btn){btn=document.createElement('button');btn.id='honorBtn';btn.type='button';btn.className='honorBtn';btn.textContent='🏆';btn.title='Доска почёта / Hall of Fame';btn.setAttribute('aria-label','Доска почёта');btn.onclick=openFallback}
+    else if(!btn.onclick && !btn.dataset.nativeHonorBound){btn.onclick=openFallback}
+    btn.classList.add('sk-restored');btn.textContent='🏆';
+    if(btn.parentNode!==shell)shell.appendChild(btn);
+    return true;
+  }
+  let scheduled=false;
+  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;ensure()})}
+  function start(){ensure();const root=document.body;if(root){new MutationObserver(schedule).observe(root,{childList:true,subtree:true})}setInterval(ensure,1000)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
