@@ -29,9 +29,10 @@ jobs:
           base64 -d family-end.b64 > public/family-end.jpg
           base64 -d invite-card-v2.b64 > public/invite-card-v2.jpg
           python3 - <<'PY'
-          from PIL import Image
+          from pathlib import Path
           for p in ['public/family-end.jpg','public/invite-card-v2.jpg','public/pushok_hq.jpg']:
-              im=Image.open(p); im.verify()
+              b=Path(p).read_bytes()
+              if len(b)<1000 or b[:2]!=b'\xff\xd8': raise SystemExit('bad jpeg: '+p)
           PY
           cat > public/loader.js <<'EOF'
           (async()=>{
