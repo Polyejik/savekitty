@@ -32,23 +32,43 @@
     if(!current)current=d;
     return {d,current};
   }
+  function solvedCount(){
+    const locks=$('locks');
+    if(!locks)return 0;
+    const selectors=['.open','.done','.opened','.unlocked','.solved','[data-open="true"]','[data-state="open"]'];
+    const found=new Set();
+    selectors.forEach(s=>locks.querySelectorAll(s).forEach(el=>found.add(el.closest('.lock')||el)));
+    if(found.size)return found.size;
+    return [...locks.children].filter(el=>/open|done|unlock|solved/i.test(el.className||'')).length;
+  }
+  function syncButton(panel,btn,d){
+    const opened=!panel.hidden;
+    btn.classList.toggle('hintToggleOn',opened);
+    btn.setAttribute('aria-expanded',String(opened));
+    btn.textContent=lang()==='ru'?`🐾 Таблица × ${d}`:`🐾 Table × ${d}`;
+  }
   function render(){
     const panel=$('hintPanel'),box=$('timesTable'),btn=$('hint');
     if(!panel||!box||!btn)return;
     const {d,current}=getNumbers();
+    const highlightEnabled=solvedCount()<3;
     const hit=Math.max(1,Math.min(10,current?Math.floor(current/d):1));
     box.hidden=false;
     box.dataset.title=lang()==='ru'?`🐾 Таблица на ${d}`:`🐾 ${d} times table`;
     box.innerHTML='';
     for(let i=1;i<=10;i++){
       const el=document.createElement('div');
-      el.className='timesFact'+(i===hit?' hit':'');
+      el.className='timesFact'+(highlightEnabled&&i===hit?' hit':'');
       el.textContent=`${d} × ${i} = ${d*i}`;
       box.appendChild(el);
     }
-    const opened=!panel.hidden;
-    btn.textContent=lang()==='ru'?`🐾 Таблица × ${d}`:`🐾 Table × ${d}`;
-    btn.setAttribute('aria-expanded',String(opened));
+    syncButton(panel,btn,d);
+  }
+  function closePanel(panel,btn){
+    panel.hidden=true;
+    btn.classList.remove('hintToggleOn');
+    btn.setAttribute('aria-expanded','false');
+    requestAnimationFrame(render);
   }
   function install(){
     if(installed)return;
@@ -57,8 +77,8 @@
     installed=true;
     const st=document.createElement('style');st.id='hint-ui-v1-style';st.textContent=css;document.head.appendChild(st);
     if(!$('hintCloseX')){
-      const x=document.createElement('button');x.id='hintCloseX';x.type='button';x.setAttribute('aria-label','Close');x.textContent='×';
-      x.onclick=()=>{panel.hidden=true;requestAnimationFrame(render)};
+      const x=document.createElement('button');x.id='hintCloseX';x.type='button';x.setAttribute('aria-label',lang()==='en'?'Close':'Закрыть');x.textContent='×';
+      x.onclick=e=>{e.preventDefault();e.stopPropagation();closePanel(panel,btn)};
       panel.appendChild(x);
     }
     const oldTimes=$('timesBtn');if(oldTimes)oldTimes.tabIndex=-1;
@@ -67,6 +87,7 @@
     panelObs.observe(panel,{attributes:true,attributeFilter:['hidden']});
     const question=$('question');
     if(question){const qObs=new MutationObserver(()=>requestAnimationFrame(render));qObs.observe(question,{childList:true,subtree:true,characterData:true});}
+    const locks=$('locks');if(locks){const lObs=new MutationObserver(()=>requestAnimationFrame(render));lObs.observe(locks,{childList:true,subtree:true,attributes:true,attributeFilter:['class','data-open','data-state']});}
     document.querySelectorAll('.langBtn').forEach(b=>b.addEventListener('click',()=>requestAnimationFrame(render)));
     render();
   }
