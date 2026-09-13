@@ -22,7 +22,7 @@ jobs:
           rm -rf public
           mkdir -p public
           cp -r _parts public/_parts
-          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js share-ui-v6.js name-memory-v2.js finish-ui-v1.js finish-extra-v1.js finish-media-fix-v1.js supabase-config.js supabase-sync-v2.js public/
+          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js leaderboard-restore-v2.js share-ui-v6.js name-memory-v2.js finish-ui-v1.js finish-extra-v1.js finish-media-fix-v1.js supabase-config.js supabase-sync-v2.js public/
           cp -r dashboard public/dashboard
           cp CNAME public/CNAME
           cp pushok_hq.jpg public/pushok_hq.jpg
@@ -41,7 +41,7 @@ jobs:
             for(const p of parts){ const r=await fetch('_parts/'+p,{cache:'no-store'}); if(!r.ok) throw new Error(p); b64 += (await r.text()).trim(); }
             const bin=atob(b64); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
             const ds=new DecompressionStream('gzip'); const html=await new Response(new Blob([u8]).stream().pipeThrough(ds)).text();
-            const inject=`<script src='game-ui-v5.js?v=2'></script><script src='onboarding-v5.js?v=1'></script><script src='onboarding-skip-v1.js?v=1'></script><script src='hint-ui-v1.js?v=3'></script><script src='locks-ui-v1.js?v=1'></script><script src='finish-ui-v1.js?v=1'></script><script src='finish-extra-v1.js?v=6'></script><script src='finish-media-fix-v1.js?v=1'></script><script src='share-ui-v6.js?v=1'></script><script src='name-memory-v2.js?v=2'></script><script src='supabase-config.js?v=2'></script><script src='supabase-sync-v2.js?v=5'></script>`;
+            const inject=`<script src='game-ui-v5.js?v=2'></script><script src='onboarding-v5.js?v=1'></script><script src='onboarding-skip-v1.js?v=1'></script><script src='hint-ui-v1.js?v=3'></script><script src='locks-ui-v1.js?v=1'></script><script src='leaderboard-restore-v2.js?v=1'></script><script src='finish-ui-v1.js?v=1'></script><script src='finish-extra-v1.js?v=6'></script><script src='finish-media-fix-v1.js?v=1'></script><script src='share-ui-v6.js?v=1'></script><script src='name-memory-v2.js?v=2'></script><script src='supabase-config.js?v=2'></script><script src='supabase-sync-v2.js?v=5'></script>`;
             document.open(); document.write(html.replace('</body>',inject+'</body>')); document.close();
           })().catch(e=>{document.body.innerHTML='<pre style="color:white">Load error: '+e+'</pre>';});
           EOF
@@ -56,10 +56,11 @@ jobs:
           test -s public/loader.js
           test -s public/family-end.jpg
           test -s public/invite-card-v2.jpg
+          test -s public/leaderboard-restore-v2.js
           test -s public/finish-media-fix-v1.js
+          grep -q "leaderboard-restore-v2.js?v=1" public/loader.js
           grep -q "finish-media-fix-v1.js?v=1" public/loader.js
           grep -q "share-ui-v6.js?v=1" public/loader.js
-          ! grep -q "leaderboard-v1.js" public/loader.js
           grep -q "family-end.jpg" public/finish-extra-v1.js
           grep -q "Показатели не подменяются" public/dashboard/index.html
       - uses: actions/upload-pages-artifact@v3
