@@ -1,1 +1,1 @@
-Retrigger Cloudflare Worker rebuild after dashboard connectivity check. Deploy current worker/src/index.js with /dashboard endpoint. 2026-09-13 18:54 MSK.
+Retrigger Cloudflare Worker rebuild. Deploy current worker/src/index.js with live /dashboard endpoint and Hyperdrive binding. 2026-09-13 19:27 MSK.
