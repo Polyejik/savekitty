@@ -58,7 +58,7 @@
 
     @media(max-width:600px){
       .locksMeta .honorBtn{width:46px!important;padding:0!important;font-size:0!important}
-      .locksMeta .honorBtn:before{content:'🏆';font-size:19px}
+      .locksMeta .honorBtn:before{content:none!important}
       .hero{height:228px!important}
     }
     @media(max-width:430px){

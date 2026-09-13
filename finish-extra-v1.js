@@ -19,12 +19,13 @@
   function ensureThanks(){
     if(q('#sk-thanks'))return;
     const el=document.createElement('div');el.id='sk-thanks';
-    el.innerHTML=`<div class="card"><img class="family-art" src="/family-end.jpg?v=5" alt="Спасибо, что играли с нами!"><div class="fallback">Спасибо, что играли с нами!</div><button class="back"></button></div>`;
+    el.innerHTML=`<div class="card"><img class="family-art" src="family-end.jpg?v=5" alt="Спасибо, что играли с нами!"><div class="fallback">Спасибо, что играли с нами!</div><button class="back"></button></div>`;
     document.body.appendChild(el);
     const img=el.querySelector('.family-art'),fb=el.querySelector('.fallback');
     img.onerror=()=>{img.style.display='none';fb.classList.add('show')};
     const update=()=>{const en=lang()==='en';el.querySelector('.back').textContent=en?'Back':'Назад';img.alt=en?'Thank you for playing with us!':'Спасибо, что играли с нами!';fb.textContent=en?'Thank you for playing with us!':'Спасибо, что играли с нами!'};
     update();
+    new MutationObserver(update).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
     el.querySelector('.back').onclick=()=>{el.classList.remove('show');update()};
   }
   function mount(){
@@ -33,12 +34,12 @@
     let wrap=q('#sk-end-wrap');if(wrap)return;
     const rb=[...f.querySelectorAll('button,a')].find(isRestart);if(!rb)return;
     wrap=document.createElement('div');wrap.id='sk-end-wrap';wrap.className='sk-end-wrap';
-    const clone=rb.cloneNode(true);clone.classList.add('sk-end-btn','primary');clone.removeAttribute('id');
+    rb.classList.add('sk-end-btn','primary');
     const end=document.createElement('button');end.type='button';end.className='sk-end-btn secondary';end.textContent=lang()==='en'?'End':'Конец';
-    end.onclick=()=>{ensureThanks();q('#sk-thanks').classList.add('show')};
-    clone.onclick=e=>{e.preventDefault();rb.click()};
-    rb.style.display='none';wrap.append(clone,end);rb.parentNode.insertBefore(wrap,rb);
+    end.onclick=()=>{ensureThanks();q('#winVideo')?.pause();q('#sk-thanks').classList.add('show')};
+    rb.parentNode.insertBefore(wrap,rb);wrap.append(rb,end);
+    new MutationObserver(()=>{end.textContent=lang()==='en'?'End':'Конец'}).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
   }
   const st=document.createElement('style');st.textContent=css;document.head.appendChild(st);
-  addEventListener('DOMContentLoaded',()=>{ensureThanks();setInterval(mount,500)});
+  addEventListener('DOMContentLoaded',()=>{ensureThanks();mount();const f=q('#finish');if(f)new MutationObserver(mount).observe(f,{attributes:true,attributeFilter:['class']})});
 })();

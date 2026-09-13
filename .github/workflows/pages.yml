@@ -15,54 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build site
-        shell: bash
+      - name: Build and validate site
+        run: python3 scripts/build_site.py
+      - name: Check JavaScript syntax
         run: |
-          set -euo pipefail
-          rm -rf public
-          mkdir -p public
-          cp -r _parts public/_parts
-          cp progress.csv Kotik.mp4 pushok-praise.js game-ui-v5.js onboarding-v5.js onboarding-skip-v1.js hint-ui-v1.js locks-ui-v1.js leaderboard-restore-v2.js share-ui-v6.js name-memory-v2.js finish-ui-v1.js finish-extra-v1.js finish-media-fix-v1.js supabase-config.js supabase-sync-v2.js public/
-          cp -r dashboard public/dashboard
-          cp CNAME public/CNAME
-          cp pushok_hq.jpg public/pushok_hq.jpg
-          if [ -f family-end.jpg ]; then cp family-end.jpg public/family-end.jpg; else base64 -d family-end.b64 > public/family-end.jpg; fi
-          base64 -d invite-card-v2.b64 > public/invite-card-v2.jpg
-          python3 - <<'PY'
-          from pathlib import Path
-          for p in ['public/family-end.jpg','public/invite-card-v2.jpg','public/pushok_hq.jpg']:
-              b=Path(p).read_bytes()
-              if len(b)<1000 or b[:2]!=b'\xff\xd8': raise SystemExit('bad jpeg: '+p)
-          PY
-          cat > public/loader.js <<'EOF'
-          (async()=>{
-            const parts=['p00.b64','p01.b64','p02.b64','p03.b64','p04.b64','p05.b64','p06.b64','p07.b64'];
-            let b64='';
-            for(const p of parts){ const r=await fetch('_parts/'+p,{cache:'no-store'}); if(!r.ok) throw new Error(p); b64 += (await r.text()).trim(); }
-            const bin=atob(b64); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
-            const ds=new DecompressionStream('gzip'); const html=await new Response(new Blob([u8]).stream().pipeThrough(ds)).text();
-            const inject=`<script src='game-ui-v5.js?v=2'></script><script src='onboarding-v5.js?v=1'></script><script src='onboarding-skip-v1.js?v=1'></script><script src='hint-ui-v1.js?v=3'></script><script src='locks-ui-v1.js?v=1'></script><script src='leaderboard-restore-v2.js?v=2'></script><script src='finish-ui-v1.js?v=1'></script><script src='finish-extra-v1.js?v=6'></script><script src='finish-media-fix-v1.js?v=1'></script><script src='share-ui-v6.js?v=1'></script><script src='name-memory-v2.js?v=2'></script><script src='supabase-config.js?v=2'></script><script src='supabase-sync-v2.js?v=5'></script>`;
-            document.open(); document.write(html.replace('</body>',inject+'</body>')); document.close();
-          })().catch(e=>{document.body.innerHTML='<pre style="color:white">Load error: '+e+'</pre>';});
-          EOF
-          cat > public/index.html <<'EOF'
-          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Спаси Пушка</title><meta property="og:title" content="Спаси Пушка"><meta property="og:description" content="Помоги освободить Пушка. Я уже справился — мой результат ты узнаешь только после игры 😉"><meta property="og:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=3"><meta property="og:image:type" content="image/jpeg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://spasipushka.ru/invite-card-v2.jpg?v=3"><style>html,body{margin:0;background:#0f1722;color:#fff}</style></head><body><script src="loader.js"></script></body></html>
-          EOF
-      - name: Smoke test
-        shell: bash
+          for file in public/*.js; do node --check "$file"; done
+      - name: Regression tests
+        env:
+          QA_MODULES: ${{ github.workspace }}/tests/node_modules
         run: |
-          set -euo pipefail
-          test -s public/index.html
-          test -s public/loader.js
-          test -s public/family-end.jpg
-          test -s public/invite-card-v2.jpg
-          test -s public/leaderboard-restore-v2.js
-          test -s public/finish-media-fix-v1.js
-          grep -q "leaderboard-restore-v2.js?v=2" public/loader.js
-          grep -q "finish-media-fix-v1.js?v=1" public/loader.js
-          grep -q "share-ui-v6.js?v=1" public/loader.js
-          grep -q "family-end.jpg" public/finish-extra-v1.js
-          grep -q "Показатели не подменяются" public/dashboard/index.html
+          npm ci --prefix tests
+          node tests/regression.cjs
+          node tests/dashboard-sql.cjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

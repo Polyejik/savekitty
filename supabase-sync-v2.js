@@ -6,6 +6,9 @@
   const ANALYTICS_KEY='savekitty_analytics_v1';
   const SENT_KEY='savekitty_supabase_sent_v2';
   const PLAYER_KEY='savekitty_player_id';
+  const IDS_KEY='savekitty_completion_ids_v1';
+  let ids={};
+  try{ids=JSON.parse(localStorage.getItem(IDS_KEY)||'{}')||{}}catch{}
   const sent=new Set();
   try{(JSON.parse(localStorage.getItem(SENT_KEY)||'[]')||[]).forEach(x=>sent.add(x))}catch(e){}
 
@@ -30,7 +33,14 @@
 
   async function submit(e,key){
     const lang=e?.language??e?.lang;
+    let completionId=e.completion_id;
+    if(!validUuid(completionId)){
+      completionId=ids[key] || uuid();
+      ids[key]=completionId;
+      localStorage.setItem(IDS_KEY,JSON.stringify(ids));
+    }
     const payload={
+      completion_id:completionId,
       campaign_id:CFG.campaignId,
       player_id:playerId(),
       player_name:String(e?.player_name??e?.name??'Игрок').slice(0,60),
@@ -43,12 +53,16 @@
       game_version:String(e?.game_version||'1.5')
     };
 
-    const r=await fetch(WORKER,{
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    let r;
+    try{r=await fetch(WORKER,{
+      signal:controller.signal,
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(payload),
       keepalive:true
-    });
+    });}finally{clearTimeout(timeout)}
 
     if(!r.ok){
       const msg=(await r.text()).slice(0,300);
@@ -90,7 +104,8 @@
 
   window.saveKittySupabaseSync=scan;
   scan();
-  setInterval(scan,1000);
+  setInterval(scan,15000);
+  addEventListener('online',scan);
   addEventListener('pageshow',scan);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scan()});
 })();

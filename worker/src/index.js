@@ -4,6 +4,7 @@ const { Client } = pg;
 const ALLOWED_ORIGINS = new Set([
   "https://spasipushka.ru",
   "https://www.spasipushka.ru",
+  "https://polyejik.github.io",
 ]);
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -286,11 +287,11 @@ export default {
 
           const daily = (
             await c.query(
-              `WITH d AS(SELECT generate_series(current_date-13,current_date,interval '1 day')::date day)
-               SELECT d.day,count(g.id)::int value FROM d
+              `WITH d AS(SELECT generate_series(current_date-13,current_date,interval '1 day')::date AS report_day)
+               SELECT d.report_day AS day,count(g.id)::int value FROM d
                LEFT JOIN public.game_runs g ON g.campaign_id=$1 AND g.status='confirmed'
-                 AND g.completed_at>=d.day AND g.completed_at<d.day+interval '1 day'
-               GROUP BY d.day ORDER BY d.day`, [campaign]
+                 AND g.completed_at>=d.report_day AND g.completed_at<d.report_day+interval '1 day'
+               GROUP BY d.report_day ORDER BY d.report_day`, [campaign]
             )
           ).rows;
 
