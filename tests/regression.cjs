@@ -31,7 +31,7 @@ async function playProblem(){const [dividend,divisor]=d.getElementById('problem'
  assert.equal(d.querySelector('#winVideo source').getAttribute('src'),'Kotik.mp4');
  assert.equal(d.querySelectorAll('#sk-end-wrap #again').length,1,'real restart button; no clone');
  d.querySelector('#sk-end-wrap .secondary').click();assert(d.getElementById('sk-thanks').classList.contains('show'));
- assert.equal(d.querySelector('#sk-thanks img').getAttribute('src'),'family-end.jpg?v=5');d.querySelector('#sk-thanks .back').click();
+ assert.equal(d.querySelector('#sk-thanks img').getAttribute('src'),'family-end.png?v=1');d.querySelector('#sk-thanks .back').click();
  click('honorBtn');assert.match(d.getElementById('sk-honor-fallback').textContent,/QA/);d.querySelector('.sk-x').click();
  click('again');await new Promise(r=>setTimeout(r,900));assert(!d.getElementById('nameGate').classList.contains('show'),'restart remembers name without another prompt');assert(!d.getElementById('pk2').classList.contains('show'),'tutorial does not repeat');
  d.querySelector('.langBtn[data-lang="en"]').click();await wait();

@@ -29,7 +29,7 @@
     let btn=q('#honorBtn');
     if(!btn){btn=document.createElement('button');btn.id='honorBtn';btn.type='button';btn.className='honorBtn';btn.textContent='🏆';btn.title='Доска почёта / Hall of Fame';btn.setAttribute('aria-label','Доска почёта');btn.onclick=openFallback}
     else if(!btn.onclick && !btn.dataset.nativeHonorBound){btn.onclick=openFallback}
-    btn.classList.add('sk-restored');btn.textContent='🏆';
+    btn.classList.add('sk-restored');if(btn.textContent!=='🏆')btn.textContent='🏆';
     if(btn.parentNode!==shell)shell.appendChild(btn);
     return true;
   }

@@ -19,7 +19,7 @@
   function ensureThanks(){
     if(q('#sk-thanks'))return;
     const el=document.createElement('div');el.id='sk-thanks';
-    el.innerHTML=`<div class="card"><img class="family-art" src="family-end.jpg?v=5" alt="Спасибо, что играли с нами!"><div class="fallback">Спасибо, что играли с нами!</div><button class="back"></button></div>`;
+    el.innerHTML=`<div class="card"><img class="family-art" src="family-end.png?v=1" alt="Спасибо, что играли с нами!"><div class="fallback">Спасибо, что играли с нами!</div><button class="back"></button></div>`;
     document.body.appendChild(el);
     const img=el.querySelector('.family-art'),fb=el.querySelector('.fallback');
     img.onerror=()=>{img.style.display='none';fb.classList.add('show')};

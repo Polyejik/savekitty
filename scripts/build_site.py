@@ -15,13 +15,18 @@ SCRIPTS = ['game-ui-v5.js', 'onboarding-v5.js', 'onboarding-skip-v1.js',
 def build():
     if OUT.exists(): shutil.rmtree(OUT)
     OUT.mkdir()
-    for name in SCRIPTS + ['progress.csv', 'Kotik.mp4', 'CNAME', 'pushok_hq.jpg']:
+    for name in SCRIPTS + ['progress.csv', 'Kotik.mp4', 'CNAME', 'pushok_hq.jpg', 'family-end.png']:
         shutil.copy2(ROOT / name, OUT / name)
     (OUT / 'dashboard').mkdir()
     shutil.copy2(ROOT / 'dashboard/app.js', OUT / 'dashboard/app.js')
+    shutil.copy2(ROOT / 'dashboard/dashboard.css', OUT / 'dashboard/dashboard.css')
+    dash_css_version = hashlib.sha256((OUT / 'dashboard/dashboard.css').read_bytes()).hexdigest()[:12]
     dash_version = hashlib.sha256((OUT / 'dashboard/app.js').read_bytes()).hexdigest()[:12]
     dash_html = (ROOT / 'dashboard/index.html').read_text().replace('src="app.js"', f'src="app.js?v={dash_version}"')
+    dash_html = dash_html.replace('href="dashboard.css"', f'href="dashboard.css?v={dash_css_version}"')
     (OUT / 'dashboard/index.html').write_text(dash_html)
+    png = (OUT / 'family-end.png').read_bytes()
+    assert png[:8] == b'\x89PNG\r\n\x1a\n' and len(png) > 1000, 'Invalid family PNG'
     for name, encoded in [('family-end.jpg', 'family-end.b64'), ('invite-card-v2.jpg', 'invite-card-v2.b64')]:
         direct = ROOT / name
         (OUT / name).write_bytes(direct.read_bytes() if direct.exists() else base64.b64decode((ROOT / encoded).read_text()))
