@@ -35,6 +35,11 @@ def build():
         assert len(data) > 1000 and data[:2] == b'\xff\xd8', f'Invalid JPEG: {name}'
     html = (ROOT / 'index.html').read_text()
     assert 'document.write' not in html and 'dropbox.com' not in html
+    marker = '<div class="locks" id="locks"></div>'
+    replacement = '<div class="locksMeta"><div class="locks" id="locks"></div><button id="honorBtn" class="honorBtn sk-restored" type="button" title="Доска почёта / Hall of Fame" aria-label="Доска почёта">🏆</button></div>'
+    if marker in html:
+        html = html.replace(marker, replacement, 1)
+    assert html.count('id="honorBtn"') == 1, 'Leaderboard button missing or duplicated'
     for name in SCRIPTS:
         version = hashlib.sha256((OUT / name).read_bytes()).hexdigest()[:12]
         html = html.replace(f'src="{name}"', f'src="{name}?v={version}"')
