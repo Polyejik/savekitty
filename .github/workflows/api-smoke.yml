@@ -1,0 +1,28 @@
+name: Live API Smoke Test
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Worker health
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS --max-time 20 -o /tmp/health.json -w '%{http_code}' https://spasipushka-api.kutuzovap.workers.dev/health)
+          cat /tmp/health.json
+          test "$code" = "200"
+          grep -q '"ok":true' /tmp/health.json
+      - name: Check live sponsor dashboard API
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS --max-time 25 -o /tmp/dashboard.json -w '%{http_code}' 'https://spasipushka-api.kutuzovap.workers.dev/dashboard?campaign=save-pushok-pilot')
+          cat /tmp/dashboard.json
+          test "$code" = "200"
+          grep -q '"ok":true' /tmp/dashboard.json
+          grep -q '"summary"' /tmp/dashboard.json
