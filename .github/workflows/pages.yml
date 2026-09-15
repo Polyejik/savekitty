@@ -27,6 +27,7 @@ jobs:
           npm ci --prefix tests
           node tests/regression.cjs
           node tests/dashboard-sql.cjs
+          node tests/database-security.cjs
           node tests/dashboard-ui.cjs
       - uses: actions/upload-pages-artifact@v3
         with:

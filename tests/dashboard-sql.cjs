@@ -3,6 +3,7 @@ const {PGlite}=require(process.env.QA_MODULES+'/@electric-sql/pglite');
 const fs=require('node:fs');const path=require('node:path');
 (async()=>{
  const db=new PGlite();const root=path.resolve(__dirname,'..');const src=fs.readFileSync(root+'/worker/src/index.js','utf8');
+ await db.exec('CREATE ROLE anon; CREATE ROLE authenticated;');
  await db.exec(fs.readFileSync(root+'/supabase/schema.sql','utf8').replace('create extension if not exists pgcrypto;','').split('alter table public.campaigns enable')[0]);
  for(const m of src.matchAll(/await c.query\(\s*`([\s\S]*?)`/g))if(m[1].includes('CREATE TABLE IF NOT EXISTS public.game_challenges')||m[1].includes('CREATE INDEX IF NOT EXISTS game_challenges'))await db.query(m[1]);
  const cid='08fae845-8817-479f-8b49-1987b9035d7f';

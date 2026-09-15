@@ -1,0 +1,20 @@
+name: Live database security
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'supabase/**'
+      - 'scripts/check_live_security.py'
+      - '.github/workflows/database-security.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify deployed database protection and dashboard
+        run: python3 scripts/check_live_security.py
