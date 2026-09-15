@@ -1,36 +1,42 @@
 """Read-only post-deploy checks. Never submit synthetic game results to production."""
 import json
 import re
+import subprocess
 import time
 from pathlib import Path
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 API = 'https://spasipushka-api.kutuzovap.workers.dev'
 
 
 def get(url, headers=None):
+    # Match the transport used by the existing, working API smoke workflow.
+    command = ['curl', '--silent', '--show-error', '--max-time', '25', '--write-out', '\n%{http_code}']
+    for name, value in (headers or {}).items():
+        command.extend(['--header', name + ': ' + value])
+    result = subprocess.run(command + [url], capture_output=True, text=True, check=True)
+    body, status = result.stdout.rsplit('\n', 1)
     try:
-        with urlopen(Request(url, headers=headers or {}), timeout=25) as response:
-            return response.status, json.load(response)
-    except HTTPError as error:
-        try:
-            data = json.load(error)
-        except (ValueError, OSError):
-            data = None
-        return error.code, data
+        data = json.loads(body)
+    except ValueError:
+        data = None
+    return int(status), data
 
 
 def main():
     # Worker and Pages deploy independently. Wait for the intended backend build.
+    previous = None
     for attempt in range(36):
         try:
             status, health = get(API + '/health')
-            if status == 200 and health.get('version') == 'challenge-v4-rls':
+            version = health.get('version') if isinstance(health, dict) else None
+            if (status, version) != previous:
+                print('Worker health:', status, version, flush=True)
+                previous = (status, version)
+            if status == 200 and version == 'challenge-v4-rls':
                 break
-        except (URLError, TimeoutError):
-            pass
+        except subprocess.CalledProcessError:
+            print('Worker health request did not complete; retrying', flush=True)
         time.sleep(10)
     else:
         raise RuntimeError('The security Worker build has not reached production')
