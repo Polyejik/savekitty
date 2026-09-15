@@ -33,7 +33,7 @@ def main():
             if (status, version) != previous:
                 print('Worker health:', status, version, flush=True)
                 previous = (status, version)
-            if status == 200 and version == 'challenge-v4-rls':
+            if status == 200 and version == 'challenge-v4-rls-audit':
                 break
         except subprocess.CalledProcessError:
             print('Worker health request did not complete; retrying', flush=True)
@@ -47,11 +47,27 @@ def main():
     assert len(dashboard.get('daily', [])) == 14, 'Dashboard response is incomplete'
     print('PASS: new Worker deployed; database migration and dashboard queries succeeded')
 
+    status, security = get(API + '/database-security')
+    assert status == 200 and security.get('ok') is True, 'Live database catalog reports insecure tables: ' + str(security)
+    assert {row['table_name'] for row in security['checks']} == {'game_challenges', 'game_runs', 'campaigns'}
+    for row in security['checks']:
+        assert row['rls_enabled'] and row['public_tables_without_rls'] == 0
+        print('PASS: live PostgreSQL catalog confirms RLS on ' + row['table_name'])
+    challenge = next(row for row in security['checks'] if row['table_name'] == 'game_challenges')
+    assert not any(challenge[name] for name in ['anon_table_access', 'authenticated_table_access', 'anon_column_access', 'authenticated_column_access'])
+    print('PASS: live PostgreSQL confirms no public table or column privileges on invitations')
+
     config = (ROOT / 'supabase-config.js').read_text()
     base = re.search(r'url:\s*"([^"]+)"', config)[1]
     key = re.search(r'anonKey:\s*"([^"]+)"', config)[1]
     for table in ['game_challenges', 'game_runs', 'campaigns']:
-        status, rows = get(base + '/rest/v1/' + table + '?select=id&limit=1', {'apikey': key})
+        try:
+            status, rows = get(base + '/rest/v1/' + table + '?select=id&limit=1', {'apikey': key})
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 6:
+                raise RuntimeError('Supabase REST verification failed') from None
+            print('::warning::Legacy Supabase REST hostname does not resolve; external REST check unavailable. Live database RLS and privilege checks above passed.')
+            break
         denied = status in (401, 403) and isinstance(rows, dict) and rows.get('code') == '42501'
         if table == 'game_challenges':
             assert denied, 'Expected PostgreSQL permission denial, not an invalid API key or network error'

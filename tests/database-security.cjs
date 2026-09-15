@@ -48,6 +48,7 @@ const {PGlite} = require(process.env.QA_MODULES + '/@electric-sql/pglite');
   // Exercise the actual Worker handlers with a real PostgreSQL engine. No network writes.
   await db.exec(fs.readFileSync(root + '/supabase/schema.sql', 'utf8')
     .replace('create extension if not exists pgcrypto;', '').split('alter table public.campaigns enable')[0]);
+  await db.exec('ALTER TABLE public.game_runs ENABLE ROW LEVEL SECURITY; ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;');
   const ctx = {module:{exports:{}}, pg:{Client:class {
     async connect() {} query(q,p) { return db.query(q,p); } async end() {}
   }}, crypto:webcrypto, URL, Response, console};
@@ -72,6 +73,10 @@ const {PGlite} = require(process.env.QA_MODULES + '/@electric-sql/pglite');
   await call('/game-run', second);
   assert.equal((await call('/challenge/' + challenge.id + '/reveal', {player_id:second.player_id})).result.verified_run, true);
   assert.equal((await call('/dashboard?campaign=save-pushok-pilot')).summary.raw_runs, 2);
+  assert.equal((await call('/database-security')).checks.length, 3);
+  await db.exec('ALTER TABLE public.game_runs DISABLE ROW LEVEL SECURITY');
+  const failed = await ctx.module.exports.fetch(new Request('https://test.invalid/database-security'), {HYPERDRIVE:{connectionString:'local-test'}});
+  assert.equal(failed.status, 503, 'The audit must fail if any application table loses RLS');
   await db.close();
 
   const fresh = new PGlite();

@@ -100,8 +100,36 @@ export default {
         ok: true,
         service: "spasipushka-api",
         hyperdrive: Boolean(env.HYPERDRIVE?.connectionString),
-        version: "challenge-v4-rls",
+        version: "challenge-v4-rls-audit",
       });
+    }
+
+    // Read-only metadata, never credentials or player records. Used by deployment checks.
+    if (url.pathname === "/database-security" && request.method === "GET") {
+      try {
+        const checks = await withDb(env, async c => (
+          await c.query(`
+            SELECT cl.relname AS table_name, cl.relrowsecurity AS rls_enabled,
+              has_table_privilege('anon', cl.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') AS anon_table_access,
+              has_table_privilege('authenticated', cl.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') AS authenticated_table_access,
+              has_any_column_privilege('anon', cl.oid, 'SELECT,INSERT,UPDATE,REFERENCES') AS anon_column_access,
+              has_any_column_privilege('authenticated', cl.oid, 'SELECT,INSERT,UPDATE,REFERENCES') AS authenticated_column_access,
+              (SELECT count(*)::int FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace
+               WHERE n.nspname='public' AND t.relkind IN ('r','p') AND NOT t.relrowsecurity) AS public_tables_without_rls
+            FROM pg_class cl JOIN pg_namespace ns ON ns.oid=cl.relnamespace
+            WHERE ns.nspname='public' AND cl.relname IN ('game_challenges','game_runs','campaigns')
+              AND cl.relkind IN ('r','p') ORDER BY cl.relname
+          `)
+        ).rows);
+        const challenge = checks.find(row => row.table_name === 'game_challenges');
+        const ok = checks.length === 3 && checks.every(row => row.rls_enabled && row.public_tables_without_rls === 0)
+          && challenge && !challenge.anon_table_access && !challenge.authenticated_table_access
+          && !challenge.anon_column_access && !challenge.authenticated_column_access;
+        return json(request, {ok:Boolean(ok), checks}, ok ? 200 : 503);
+      } catch (e) {
+        console.error(e);
+        return json(request, {ok:false, error:'Database security verification failed'}, 503);
+      }
     }
 
     if (url.pathname === "/game-run" && request.method === "POST") {
