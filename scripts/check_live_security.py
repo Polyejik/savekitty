@@ -15,7 +15,11 @@ def get(url, headers=None):
         with urlopen(Request(url, headers=headers or {}), timeout=25) as response:
             return response.status, json.load(response)
     except HTTPError as error:
-        return error.code, None
+        try:
+            data = json.load(error)
+        except (ValueError, OSError):
+            data = None
+        return error.code, data
 
 
 def main():
@@ -42,10 +46,11 @@ def main():
     key = re.search(r'anonKey:\s*"([^"]+)"', config)[1]
     for table in ['game_challenges', 'game_runs', 'campaigns']:
         status, rows = get(base + '/rest/v1/' + table + '?select=id&limit=1', {'apikey': key})
+        denied = status in (401, 403) and isinstance(rows, dict) and rows.get('code') == '42501'
         if table == 'game_challenges':
-            assert status in (401, 403), 'Anonymous challenge access was not revoked'
+            assert denied, 'Expected PostgreSQL permission denial, not an invalid API key or network error'
         else:
-            assert status in (401, 403) or (status == 200 and rows == []), 'Raw table is publicly readable: ' + table
+            assert denied or (status == 200 and rows == []), 'Raw table is publicly readable or could not be verified: ' + table
         print('PASS: anonymous read blocked for ' + table + ' (HTTP ' + str(status) + ')')
 
 
