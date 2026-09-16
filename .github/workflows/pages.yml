@@ -19,7 +19,7 @@ jobs:
         run: python3 scripts/build_site.py
       - name: Check JavaScript syntax
         run: |
-          for file in public/*.js; do node --check "$file"; done
+          for file in public/*.js public/dashboard/*.js worker/src/*.js; do node --check "$file"; done
       - name: Regression tests
         env:
           QA_MODULES: ${{ github.workspace }}/tests/node_modules
@@ -29,6 +29,10 @@ jobs:
           node tests/dashboard-sql.cjs
           node tests/database-security.cjs
           node tests/dashboard-ui.cjs
+          node tests/sync.cjs
+          node tests/partners.cjs
+          node tests/partners-ui.cjs
+          node tests/leaderboard-ui.cjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

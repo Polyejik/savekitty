@@ -33,13 +33,20 @@ def main():
             if (status, version) != previous:
                 print('Worker health:', status, version, flush=True)
                 previous = (status, version)
-            if status == 200 and version == 'challenge-v4-rls-audit':
+            if status == 200 and version == 'dashboard-v5-partners':
                 break
         except subprocess.CalledProcessError:
             print('Worker health request did not complete; retrying', flush=True)
         time.sleep(10)
     else:
         raise RuntimeError('The security Worker build has not reached production')
+
+    status, leaderboard = get(API + '/leaderboard')
+    assert status == 200 and leaderboard.get('ok') is True
+    assert len(leaderboard['rows']) <= 10
+    assert all(row['duration_seconds'] >= 45 for row in leaderboard['rows'])
+    assert [row['duration_seconds'] for row in leaderboard['rows']] == sorted(row['duration_seconds'] for row in leaderboard['rows'])
+    print('PASS: global leaderboard returns ordered top 10')
 
     # The existing dashboard path runs the atomic table bootstrap/migration.
     status, dashboard = get(API + '/dashboard?campaign=save-pushok-pilot')
@@ -49,10 +56,17 @@ def main():
 
     status, security = get(API + '/database-security')
     assert status == 200 and security.get('ok') is True, 'Live database catalog reports insecure tables: ' + str(security)
-    assert {row['table_name'] for row in security['checks']} == {'game_challenges', 'game_runs', 'campaigns'}
+    assert {row['table_name'] for row in security['checks']} == {'game_challenges', 'game_runs', 'campaigns', 'partner_rooms', 'partner_events'}
     for row in security['checks']:
         assert row['rls_enabled'] and row['public_tables_without_rls'] == 0
         print('PASS: live PostgreSQL catalog confirms RLS on ' + row['table_name'])
+    for private in [row for row in security['checks'] if row['table_name'] in ('partner_rooms', 'partner_events')]:
+        assert not any(private[name] for name in ['anon_table_access', 'authenticated_table_access', 'anon_column_access', 'authenticated_column_access'])
+    assert dashboard['summary']['total_runs'] >= dashboard['summary']['confirmed_rescues']
+    assert 'limited_runs' in dashboard['summary'] and 'retry_duplicates' in dashboard['summary']
+    status, denied_room = get(API + '/partner-rooms/08fae845-8817-479f-8b49-1987b9035d7f')
+    assert status == 401, 'Private room must require an invitation'
+    print('PASS: all-game totals and room access guard respond correctly')
     challenge = next(row for row in security['checks'] if row['table_name'] == 'game_challenges')
     assert not any(challenge[name] for name in ['anon_table_access', 'authenticated_table_access', 'anon_column_access', 'authenticated_column_access'])
     print('PASS: live PostgreSQL confirms no public table or column privileges on invitations')

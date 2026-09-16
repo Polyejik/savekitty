@@ -12,12 +12,17 @@ const fs=require('node:fs');const path=require('node:path');
  await db.query(insert,payload);await db.query(insert,payload);
  assert.equal((await db.query('SELECT count(*)::int n FROM game_runs')).rows[0].n,1,'retry must not duplicate completion');
  await db.query(insert,['87e9a09e-abbe-4cbb-a566-241a233721c9',...payload.slice(1)]);
+ const allCte=src.match(/const allCte = `([\s\S]*?)`/)[1];
  const cte=src.match(/const confirmedCte = `([\s\S]*?)`/)[1];
  const dash=src.slice(src.indexOf('if (url.pathname === "/dashboard"'));
  let count=0;for(const m of dash.matchAll(/await c.query\(\s*`([\s\S]*?)`/g)){
-  const query=m[1].replace('${confirmedCte}',cte);const r=await db.query(query,query.includes('$1')?['save-pushok-pilot']:[]);count++;
+  const query=m[1].replace('${confirmedCte}',cte).replace('${allCte}',allCte);const r=await db.query(query,query.includes('$1')?['save-pushok-pilot']:[]);count++;
   if(m[1].includes('raw_runs')){assert.equal(r.rows[0].raw_runs,2);assert.equal(r.rows[0].confirmed_rescues,1);assert.equal(r.rows[0].duplicates,1)}
   if(m[1].includes('generate_series'))assert.equal(r.rows.length,14);
  }
- assert.equal(count,7);await db.close();console.log('PASS: all 7 dashboard queries execute on PostgreSQL; retry is idempotent; old exact duplicates count once in sponsor totals.');
+ const totalSql=Array.from(dash.matchAll(/await c.query\(\s*`([\s\S]*?)`/g)).find(m=>m[1].includes('total_runs'))[1].replace('${allCte}',allCte);
+ for(let i=0;i<4;i++)await db.query(insert,[require('node:crypto').randomUUID(),payload[1],payload[2],'QA','ru',new Date(Date.now()-200000-i*2000).toISOString(),new Date(Date.now()-i*2000).toISOString(),i===3?10:100,'test']);
+ const totals=(await db.query(totalSql,['save-pushok-pilot'])).rows[0];
+ assert.equal(totals.total_runs,5);assert.equal(totals.retry_duplicates,1);assert.equal(totals.limited_runs,2);assert.equal(totals.fast_runs,1);
+ assert.equal(count,8);await db.close();console.log('PASS: all 8 dashboard queries execute on PostgreSQL; retry is idempotent; old exact duplicates count once in sponsor totals.');
 })().catch(e=>{console.error(e);process.exit(1)});

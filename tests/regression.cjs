@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'../public');
 const requests=[],errors=[];
 const vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 const html=fs.readFileSync(root+'/index.html','utf8').replace(/<script src="([^"]+)"><\/script>/g,(_,src)=>'<script>'+fs.readFileSync(path.join(root,src.split('?')[0]),'utf8').replace(/<\/script>/g,'<\\/script>')+'</script>');
-const dom=new JSDOM(html,{url:'https://spasipushka.ru/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.HTMLMediaElement.prototype.play=function(){return Promise.resolve()};w.HTMLMediaElement.prototype.pause=function(){};w.fetch=async(url,opts)=>{requests.push({url,payload:opts?.body?JSON.parse(opts.body):null});return {ok:true,json:async()=>({ok:true,challenge:{id:'ABCDEF'}})}};}});
+const dom=new JSDOM(html,{url:'https://spasipushka.ru/',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:vc,beforeParse(w){w.TextEncoder=TextEncoder;w.TextDecoder=TextDecoder;w.HTMLMediaElement.prototype.play=function(){return Promise.resolve()};w.HTMLMediaElement.prototype.pause=function(){};w.fetch=async(url,opts)=>{requests.push({url,payload:opts?.body?JSON.parse(opts.body):null});return {ok:true,json:async()=>({ok:true,rows:[{name:'QA',duration_seconds:120}],challenge:{id:'ABCDEF'},row:{completion_id:opts?.body?JSON.parse(opts.body).completion_id:null,status:'confirmed'}})}};}});
 const w=dom.window,d=w.document,wait=()=>new Promise(r=>setTimeout(r,45));
 const click=id=>{assert(d.getElementById(id),'missing '+id);d.getElementById(id).click()};
 async function enter(n){for(const digit of String(n)){d.querySelector(`#pushok-keypad [data-key="${digit}"]`).click()}click('ok');await wait()}
@@ -32,11 +32,11 @@ async function playProblem(){const [dividend,divisor]=d.getElementById('problem'
  assert.equal(d.querySelectorAll('#sk-end-wrap #again').length,1,'real restart button; no clone');
  d.querySelector('#sk-end-wrap .secondary').click();assert(d.getElementById('sk-thanks').classList.contains('show'));
  assert.equal(d.querySelector('#sk-thanks img').getAttribute('src'),'family-end.png?v=1');d.querySelector('#sk-thanks .back').click();
- click('honorBtn');assert.match(d.getElementById('sk-honor-fallback').textContent,/QA/);d.querySelector('.sk-x').click();
+ click('honorBtn');await wait();assert.match(d.getElementById('sk-honor-fallback').textContent,/QA/);d.querySelector('.sk-x').click();
  click('again');await new Promise(r=>setTimeout(r,900));assert(!d.getElementById('nameGate').classList.contains('show'),'restart remembers name without another prompt');assert(!d.getElementById('pk2').classList.contains('show'),'tutorial does not repeat');
  d.querySelector('.langBtn[data-lang="en"]').click();await wait();
  for(let n=0;n<9;n++)await playProblem();await new Promise(r=>setTimeout(r,800));
- assert.equal(JSON.parse(w.localStorage.getItem('savekitty_analytics_v1')).length,2);
+ assert.equal(JSON.parse(w.localStorage.getItem('savekitty_analytics_v1')).length,2);assert.equal(requests.filter(x=>x.url.endsWith('/game-run')).length,2,'both full games reach the server');assert.equal(Object.keys(JSON.parse(w.localStorage.getItem('savekitty_sync_receipts_v1'))).length,2);
  assert.equal(d.querySelector('#sk-end-wrap .secondary').textContent,'End');assert.equal(d.getElementById('again').textContent,'New game');assert.equal(d.querySelector('#pk6 h3').textContent,'Challenge a friend');
  assert.equal(requests.filter(x=>x.url.endsWith('/challenge')).length,2,'sharing re-prepared for second run');
  assert.equal(errors.length,0,errors.join('\n'));

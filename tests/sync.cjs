@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {JSDOM,VirtualConsole}=require(process.env.QA_MODULES+'/jsdom');
+const root=path.resolve(__dirname,'..'),code=fs.readFileSync(root+'/supabase-sync-v2.js','utf8');
+const cid='08fae845-8817-479f-8b49-1987b9035d7f',event={event:'completed',completion_id:cid,started_at:'2026-09-16T10:00:00Z',completed_at:'2026-09-16T10:02:00Z',duration_seconds:120,player_name:'Test'};
+const key=[event.started_at,event.completed_at,event.player_name,event.duration_seconds].join('|');
+const tick=()=>new Promise(r=>setTimeout(r,20));
+(async()=>{
+ let mode='offline',calls=[];
+ const dom=new JSDOM('<html lang="en"><body><p id="winTime"></p></body></html>',{url:'https://spasipushka.ru',runScripts:'outside-only',virtualConsole:new VirtualConsole()});const w=dom.window;
+ w.SAVEKITTY_SUPABASE={campaignId:'save-pushok-pilot'};
+ w.localStorage.setItem('savekitty_analytics_v1',JSON.stringify([event]));w.localStorage.setItem('savekitty_supabase_sent_v2',JSON.stringify([key]));
+ w.fetch=async(url,opts)=>{const b=JSON.parse(opts.body);calls.push(b);if(mode==='offline')throw new Error('offline');return {ok:true,json:async()=>mode==='bad'?{ok:true}:{ok:true,row:{completion_id:b.completion_id,status:'duplicate',reason:'daily_limit'}}}};
+ w.eval(code);await tick();assert.equal(calls.length,1,'Old sent marker without receipt must reconcile against server');
+ w.document.dispatchEvent(new w.CustomEvent('savekitty:completed',{detail:event}));await tick();assert.match(w.document.getElementById('sk-sync').textContent,/waiting to sync/);
+ mode='bad';await w.saveKittySupabaseSync();assert.equal(w.localStorage.getItem('savekitty_sync_receipts_v1'),null,'HTTP 200 without actual acknowledgement is not saved');
+ mode='ok';await w.saveKittySupabaseSync();const receipts=JSON.parse(w.localStorage.getItem('savekitty_sync_receipts_v1'));assert.equal(receipts[cid].reason,'daily_limit');assert.match(w.document.getElementById('sk-sync').textContent,/3 games per 24 hours/);
+ const n=calls.length;await w.saveKittySupabaseSync();assert.equal(calls.length,n,'Acknowledged result is not sent again');assert(calls.every(x=>x.completion_id===cid));
+ w.document.dispatchEvent(new w.Event('savekitty:reset'));assert.equal(w.document.getElementById('sk-sync').textContent,'');w.close();
+ const d=new JSDOM('',{url:'https://spasipushka.ru',runScripts:'outside-only',virtualConsole:new VirtualConsole()});d.window.SAVEKITTY_SUPABASE={campaignId:'save-pushok-pilot'};
+ const second={...event,completion_id:'18fae845-8817-479f-8b49-1987b9035d7f',completed_at:'2026-09-16T10:03:00Z'};
+ d.window.localStorage.setItem('savekitty_analytics_v1',JSON.stringify([event,second]));
+ d.window.fetch=async(url,o)=>{const b=JSON.parse(o.body);return b.completion_id===cid?{ok:false,status:400,text:async()=>'Invalid old record'}:{ok:true,json:async()=>({ok:true,row:{completion_id:b.completion_id,status:'confirmed'}})}};
+ d.window.eval(code);await tick();assert(JSON.parse(d.window.localStorage.getItem('savekitty_sync_receipts_v1'))[second.completion_id],'Invalid old data cannot block a later valid game');d.window.close();
+ console.log('PASS: offline persistence, stable-ID reconciliation, invalid acknowledgement rejection, retry recovery, limit receipt, EN status and damaged-record queue recovery.');
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -1,4 +1,5 @@
 import pg from "pg";
+import {handlePartnerRequest, ensurePartnerSchema} from "./partners.js";
 const { Client } = pg;
 
 const ALLOWED_ORIGINS = new Set([
@@ -13,7 +14,7 @@ function corsHeaders(request) {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGINS.has(origin) ? origin : "https://spasipushka.ru",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Vary": "Origin",
   };
 }
@@ -95,12 +96,17 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
+    if (url.pathname.startsWith('/partner-rooms')) {
+      const response = await handlePartnerRequest(request, env, {withDb, json});
+      if (response) return response;
+    }
+
     if (url.pathname === "/health" && request.method === "GET") {
       return json(request, {
         ok: true,
         service: "spasipushka-api",
         hyperdrive: Boolean(env.HYPERDRIVE?.connectionString),
-        version: "challenge-v4-rls-audit",
+        version: "dashboard-v5-partners",
       });
     }
 
@@ -117,18 +123,39 @@ export default {
               (SELECT count(*)::int FROM pg_class t JOIN pg_namespace n ON n.oid=t.relnamespace
                WHERE n.nspname='public' AND t.relkind IN ('r','p') AND NOT t.relrowsecurity) AS public_tables_without_rls
             FROM pg_class cl JOIN pg_namespace ns ON ns.oid=cl.relnamespace
-            WHERE ns.nspname='public' AND cl.relname IN ('game_challenges','game_runs','campaigns')
+            WHERE ns.nspname='public' AND cl.relname IN ('game_challenges','game_runs','campaigns','partner_rooms','partner_events')
               AND cl.relkind IN ('r','p') ORDER BY cl.relname
           `)
         ).rows);
         const challenge = checks.find(row => row.table_name === 'game_challenges');
-        const ok = checks.length === 3 && checks.every(row => row.rls_enabled && row.public_tables_without_rls === 0)
-          && challenge && !challenge.anon_table_access && !challenge.authenticated_table_access
-          && !challenge.anon_column_access && !challenge.authenticated_column_access;
+        const privateTables = checks.filter(row => ['game_challenges','partner_rooms','partner_events'].includes(row.table_name));
+        const ok = checks.length === 5 && checks.every(row => row.rls_enabled && row.public_tables_without_rls === 0)
+          && challenge && privateTables.every(row => !row.anon_table_access && !row.authenticated_table_access
+          && !row.anon_column_access && !row.authenticated_column_access);
         return json(request, {ok:Boolean(ok), checks}, ok ? 200 : 503);
       } catch (e) {
         console.error(e);
         return json(request, {ok:false, error:'Database security verification failed'}, 503);
+      }
+    }
+
+    if (url.pathname === "/leaderboard" && request.method === "GET") {
+      try {
+        const rows = await withDb(env, async c => (await c.query(`
+          WITH best AS (
+            SELECT DISTINCT ON (player_id) player_id, player_name, duration_seconds, completed_at
+            FROM public.game_runs
+            WHERE duration_seconds >= 45 AND (status='confirmed' OR reason='daily_limit')
+            ORDER BY player_id, duration_seconds, completed_at, id
+          )
+          SELECT left(coalesce(nullif(trim(player_name),''),'Игрок'),24) AS name,
+                 duration_seconds, clock_timestamp() AS checked_at
+          FROM best ORDER BY duration_seconds, completed_at, player_id LIMIT 10
+        `)).rows);
+        return json(request, {ok:true, rows:rows.map((r,i)=>({rank:i+1,name:r.name,duration_seconds:r.duration_seconds}))});
+      } catch (e) {
+        console.error('Leaderboard query failed', e.code || 'database');
+        return json(request, {ok:false,error:'Leaderboard unavailable'},503);
       }
     }
 
@@ -300,6 +327,7 @@ export default {
       try {
         const data = await withDb(env, async c => {
           await ensureChallengeSchema(c);
+          await ensurePartnerSchema(c);
           const camp = (
             await c.query(
               `SELECT id,sponsor_name,title,rate_rub,budget_rub,starts_at,ends_at,is_active
@@ -367,17 +395,28 @@ export default {
             )
           ).rows[0];
 
+          const allCte = `WITH ranked_all AS (
+            SELECT *, row_number() OVER (PARTITION BY player_id,started_at,completed_at,duration_seconds
+              ORDER BY CASE WHEN status='confirmed' THEN 0 ELSE 1 END,created_at,id) AS event_rank
+            FROM public.game_runs WHERE campaign_id=$1
+          ), unique_runs AS (SELECT * FROM ranked_all WHERE event_rank=1)`;
+          const totals = (await c.query(`${allCte} SELECT count(*)::int total_runs, count(DISTINCT player_id)::int total_players,
+            count(*) FILTER(WHERE completed_at>=date_trunc('day',now()))::int today_total,
+            count(*) FILTER(WHERE reason='daily_limit')::int limited_runs,
+            count(*) FILTER(WHERE status='too_fast')::int fast_runs,
+            (SELECT count(*)::int FROM ranked_all WHERE event_rank>1) AS retry_duplicates
+            FROM unique_runs`, [campaign])).rows[0];
           const runs = (
             await c.query(
-              `${confirmedCte} SELECT completed_at,
+              `${allCte} SELECT completed_at,now() AS checked_at,
                       'Участник '||upper(substr(md5(player_id::text),1,5)) AS participant,
-                      duration_seconds,game_version,campaign_id,status
-               FROM confirmed_runs ORDER BY completed_at DESC LIMIT 20`, [campaign]
+                      duration_seconds,game_version,campaign_id,status,reason
+               FROM unique_runs ORDER BY completed_at DESC LIMIT 20`, [campaign]
             )
           ).rows;
 
           const rate = Number(camp.rate_rub), budget = Number(camp.budget_rub), confirmed = Number(s.confirmed_rescues);
-          const donation = confirmed * rate;
+          const donation = Math.min(budget, confirmed * rate);
           const daysLeft = Math.max(0, Math.ceil((new Date(camp.ends_at)-Date.now())/86400000));
           const targetRescues = rate > 0 ? Math.floor(budget/rate) : 0;
           const pace7d = Number(pace.pace_7d) || 0;
@@ -385,7 +424,7 @@ export default {
           const projectedDonation = Math.min(budget, projectedRescues * rate);
           const validRate = Number(s.raw_runs) ? 100*confirmed/Number(s.raw_runs) : 0;
 
-          return {campaign:camp,summary:{...s,repeat_rate:repeat.repeat_rate,rate_rub:rate,budget_rub:budget,
+          return {campaign:camp,summary:{...s,...totals,repeat_rate:repeat.repeat_rate,rate_rub:rate,budget_rub:budget,
             donation_rub:donation,days_left:daysLeft,target_rescues:targetRescues,pace_7d:pace7d,
             projected_rescues:projectedRescues,projected_donation_rub:projectedDonation,valid_rate:validRate,
             confirmed_hours:Number(s.confirmed_seconds||0)/3600,challenges_total:Number(challengeStats.challenges_total||0),

@@ -7,6 +7,23 @@
   const SENT_KEY='savekitty_supabase_sent_v2';
   const PLAYER_KEY='savekitty_player_id';
   const IDS_KEY='savekitty_completion_ids_v1';
+  const RECEIPTS_KEY='savekitty_sync_receipts_v1';
+  let receipts={};
+  try{receipts=JSON.parse(localStorage.getItem(RECEIPTS_KEY)||'{}')||{}}catch{}
+  let activeId=null;
+  const tr=(ru,en)=>document.documentElement.lang==='en'?en:ru;
+  function showStatus(text, pending=false){
+    let box=document.getElementById('sk-sync');
+    if(!box){const anchor=document.getElementById('winTime');if(!anchor)return;box=document.createElement('p');box.id='sk-sync';box.setAttribute('role','status');box.style.cssText='font-size:14px;color:#64533f;text-align:center;margin:10px 0';anchor.after(box)}
+    box.textContent=text;
+    if(pending){const b=document.createElement('button');b.type='button';b.textContent=tr('Повторить отправку','Retry sync');b.style.cssText='margin-left:8px;font:inherit;cursor:pointer';b.onclick=scan;box.append(b)}
+  }
+  function receiptText(row){
+    if(row.status==='confirmed')return tr('Результат сохранён. Прохождение зачтено в помощь.','Result saved and counted toward support.');
+    if(row.reason==='daily_limit')return tr('Результат сохранён. Лимит начислений: 3 прохождения за 24 часа.','Result saved. Support is limited to 3 games per 24 hours.');
+    if(row.status==='too_fast')return tr('Результат сохранён. Быстрый тест менее 45 секунд — без начисления.','Result saved. Tests under 45 seconds do not count toward support.');
+    return tr('Результат сохранён. Статус зачёта: ','Result saved. Status: ')+row.status;
+  }
   let ids={};
   try{ids=JSON.parse(localStorage.getItem(IDS_KEY)||'{}')||{}}catch{}
   const sent=new Set();
@@ -67,8 +84,15 @@
     if(!r.ok){
       const msg=(await r.text()).slice(0,300);
       try{localStorage.setItem('savekitty_supabase_last_error',JSON.stringify({at:new Date().toISOString(),status:r.status,msg}))}catch(e){}
-      throw new Error('Sync '+r.status+' '+msg);
+      throw Object.assign(new Error('Sync '+r.status+' '+msg),{status:r.status});
     }
+
+    const result=await r.json();
+    if(!result.ok || result.row?.completion_id!==completionId || !result.row?.status)throw new Error('Server did not acknowledge this completion');
+    receipts[completionId]={...result.row,acknowledged_at:new Date().toISOString()};
+    localStorage.setItem(RECEIPTS_KEY,JSON.stringify(receipts));
+    document.dispatchEvent(new CustomEvent('savekitty:synced',{detail:receipts[completionId]}));
+    if(activeId===completionId)showStatus(receiptText(receipts[completionId]));
 
     sent.add(key);persistSent();
     try{
@@ -89,8 +113,15 @@
       for(const e of rows){
         if(!isCompleted(e))continue;
         const key=eventKey(e);
-        if(sent.has(key))continue;
-        try{await submit(e,key)}catch(err){console.warn('[SaveKitty] sync pending',err);break}
+        // Reconcile old sent markers against actual server receipts. Stable IDs make retries safe.
+        if(sent.has(key) && (!validUuid(e.completion_id) || receipts[e.completion_id]))continue;
+        try{await submit(e,key)}catch(err){
+          console.warn('[SaveKitty] sync pending',err);
+          if(activeId)showStatus(tr('Результат на устройстве. Ожидает отправки в дашборд.','Result is saved on this device, waiting to sync.'),true);
+          // A damaged old record must not block later valid games.
+          if(err.status===400)continue;
+          break;
+        }
       }
     }finally{busy=false}
   }
@@ -103,6 +134,8 @@
   };
 
   window.saveKittySupabaseSync=scan;
+  document.addEventListener('savekitty:completed',event=>{activeId=event.detail?.completion_id;showStatus(tr('Сохраняем результат в дашборд…','Saving result to the dashboard…'));queueMicrotask(scan)});
+  document.addEventListener('savekitty:reset',()=>{activeId=null;const box=document.getElementById('sk-sync');if(box)box.textContent=''});
   scan();
   setInterval(scan,15000);
   addEventListener('online',scan);

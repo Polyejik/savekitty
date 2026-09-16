@@ -49,10 +49,12 @@ const {PGlite} = require(process.env.QA_MODULES + '/@electric-sql/pglite');
   await db.exec(fs.readFileSync(root + '/supabase/schema.sql', 'utf8')
     .replace('create extension if not exists pgcrypto;', '').split('alter table public.campaigns enable')[0]);
   await db.exec('ALTER TABLE public.game_runs ENABLE ROW LEVEL SECURITY; ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;');
-  const ctx = {module:{exports:{}}, pg:{Client:class {
+  const partnerContext={crypto:webcrypto,TextEncoder,URL,console};
+  vm.runInNewContext(fs.readFileSync(root+'/worker/src/partners.js','utf8').replaceAll('export ',''),partnerContext);
+  const ctx = {handlePartnerRequest:partnerContext.handlePartnerRequest,ensurePartnerSchema:partnerContext.ensurePartnerSchema,module:{exports:{}}, pg:{Client:class {
     async connect() {} query(q,p) { return db.query(q,p); } async end() {}
   }}, crypto:webcrypto, URL, Response, console};
-  vm.runInNewContext(src.replace('import pg from "pg";', '').replace('export default {','module.exports = {'), ctx);
+  vm.runInNewContext(src.replace(/^import .*;$/gm, '').replace('export default {','module.exports = {'), ctx);
   const call = async (route, body) => {
     const r = await ctx.module.exports.fetch(new Request('https://test.invalid' + route, body ? {
       method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
@@ -73,7 +75,15 @@ const {PGlite} = require(process.env.QA_MODULES + '/@electric-sql/pglite');
   await call('/game-run', second);
   assert.equal((await call('/challenge/' + challenge.id + '/reveal', {player_id:second.player_id})).result.verified_run, true);
   assert.equal((await call('/dashboard?campaign=save-pushok-pilot')).summary.raw_runs, 2);
-  assert.equal((await call('/database-security')).checks.length, 3);
+  assert.equal((await call('/database-security')).checks.length, 5);
+  // Global leaderboard: best qualifying time per player, never a local-device list.
+  const leaderPlayer=webcrypto.randomUUID();
+  for(let i=0;i<12;i++)await call('/game-run',{...run,player_id:i?webcrypto.randomUUID():leaderPlayer,completion_id:webcrypto.randomUUID(),player_name:'Global '+i,duration_seconds:200+i});
+  await call('/game-run',{...run,player_id:leaderPlayer,completion_id:webcrypto.randomUUID(),player_name:'Best',duration_seconds:50});
+  await call('/game-run',{...run,player_id:leaderPlayer,completion_id:webcrypto.randomUUID(),player_name:'Fast test',duration_seconds:1});
+  const leaders=(await call('/leaderboard')).rows;
+  assert.equal(leaders.length,10);assert.equal(leaders[0].name,'Best');assert.equal(leaders[0].duration_seconds,50);
+  assert(!leaders.some(r=>r.name==='Global 0'||r.name==='Fast test'));assert(leaders.every(r=>!('player_id' in r)));
   await db.exec('ALTER TABLE public.game_runs DISABLE ROW LEVEL SECURITY');
   const failed = await ctx.module.exports.fetch(new Request('https://test.invalid/database-security'), {HYPERDRIVE:{connectionString:'local-test'}});
   assert.equal(failed.status, 503, 'The audit must fail if any application table loses RLS');
