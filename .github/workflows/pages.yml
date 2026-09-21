@@ -26,6 +26,7 @@ jobs:
         run: |
           npm ci --prefix tests
           node tests/regression.cjs
+          node tests/generator-invariants.cjs
           node tests/dashboard-sql.cjs
           node tests/database-security.cjs
           node tests/dashboard-ui.cjs
