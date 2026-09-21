@@ -429,9 +429,9 @@ const I18N = {
     almostDivide:(d,c)=>`Почти. Подумай: сколько раз ${d} помещается в ${c}?`,
     what:"Что получилось?", subtractBring:"То, что уместилось, вычитаем и сносим цифру справа.",
     subtract:"То, что уместилось, вычитаем.",
-    surpriseCat:"🍽️ Сюрприз! Не все котлетки удалось разложить поровну. Посмотрим, сколько осталось.",
-    surpriseSubtract:"Не всё разделилось поровну. Найди, сколько осталось.",
-    remainderResult:r=>`Остаток = ${r}. Не все котлетки поместились поровну.`,
+    surpriseCat:"🍱 Сюрприз! Раскладываем котлетки по коробочкам поровну. Не все коробочки получатся полными — котлетки, которые останутся вне полных коробочек, и есть остаток.",
+    surpriseSubtract:"Не все коробочки получаются полными. Найди, сколько котлеток останется вне полных коробочек.",
+    remainderResult:r=>`Остаток = ${r}. Столько котлеток осталось вне полных коробочек.`,
     divideGood:"Верно! Цифра ответа и число для вычитания уже появились в уголке.",
     subtractGood:"Точно! Новое число появилось, продолжаем.", solved:"Всё верно! Пример решён.",
     almostBring:(used,current,next)=>`Почти. Сначала вычти ${used} из ${current}, потом снеси ${next}.`,
@@ -466,9 +466,9 @@ const I18N = {
     almostDivide:(d,c)=>`Almost. Think: how many times does ${d} fit into ${c}?`,
     what:"What do you get?", subtractBring:"Subtract what fitted, then bring down the next digit.",
     subtract:"Subtract what fitted.",
-    surpriseCat:"🍽️ Surprise! Not all the cutlets fit evenly. Let’s see how many are left.",
-    surpriseSubtract:"It does not divide evenly. Find how many are left.",
-    remainderResult:r=>`Remainder = ${r}. Not all the cutlets fit evenly.`,
+    surpriseCat:"🍱 Surprise! We are putting the cutlets evenly into boxes. Not every box will be full — the cutlets left outside the full boxes are the remainder.",
+    surpriseSubtract:"Not every box will be full. Find how many cutlets are left outside the full boxes.",
+    remainderResult:r=>`Remainder = ${r}. That many cutlets are left outside the full boxes.`,
     divideGood:"Correct! The quotient digit and the number to subtract are now in place.",
     subtractGood:"Exactly! The new number is in place — keep going.", solved:"Correct! The problem is solved.",
     almostBring:(used,current,next)=>`Almost. Subtract ${used} from ${current}, then bring down ${next}.`,
@@ -538,7 +538,7 @@ function saveCompletedRun(){
     started_at: new Date(gameStartedAt).toISOString(),
     completed_at: new Date(gameSolvedAt).toISOString(),
     duration_seconds: Math.max(1, Math.round((gameSolvedAt-gameStartedAt)/1000)),
-    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.2'
+    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.3'
   };
   try {
     const key = 'savekitty_analytics_v1';
@@ -559,23 +559,28 @@ function showWin(){
 
 function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
+function hasTripleRepeat(value){
+  return /(\\d)\\1\\1/.test(String(value));
+}
+
 function validPair(digits, wantRemainder=false){
   for(let tries=0; tries<600; tries++){
     const divisor = rnd(3,9);
     const qMin = digits===2 ? 11 : digits===3 ? 21 : 111;
     const qMax = digits===2 ? 32 : digits===3 ? 165 : 1450;
     const q = rnd(qMin, qMax);
-    if(String(q).includes("0")) continue;
+    if(String(q).includes("0") || hasTripleRepeat(q)) continue;
     const remainder = wantRemainder ? rnd(1, divisor-1) : 0;
     const dividend = divisor * q + remainder;
     if(String(dividend).length !== digits) continue;
-    if(/^(\d)\1+$/.test(String(dividend))) continue;
+    if(hasTripleRepeat(dividend)) continue;
 
     let cur = 0, started = false, ok = true;
     for(const ch of String(dividend)){
       cur = cur*10 + Number(ch);
       if(!started && cur < divisor) continue;
       started = true;
+      if(hasTripleRepeat(cur)){ ok = false; break; }
       const qd = Math.floor(cur/divisor);
       if(qd === 0){ ok = false; break; }
       cur %= divisor;
