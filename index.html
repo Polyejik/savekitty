@@ -429,6 +429,8 @@ const I18N = {
     almostDivide:(d,c)=>`Почти. Подумай: сколько раз ${d} помещается в ${c}?`,
     what:"Что получилось?", subtractBring:"То, что уместилось, вычитаем и сносим цифру справа.",
     subtract:"То, что уместилось, вычитаем.",
+    surpriseCat:"🍽️ Сюрприз! Здесь поровну целыми не делится. Если делить котлетки, некоторые пришлось бы разрезать — найдём остаток!",
+    surpriseSubtract:"Сюрприз: поровну целыми не получится. Найди остаток — это то, что пришлось бы разрезать.",
     divideGood:"Верно! Цифра ответа и число для вычитания уже появились в уголке.",
     subtractGood:"Точно! Новое число появилось, продолжаем.", solved:"Всё верно! Пример решён.",
     almostBring:(used,current,next)=>`Почти. Сначала вычти ${used} из ${current}, потом снеси ${next}.`,
@@ -463,6 +465,8 @@ const I18N = {
     almostDivide:(d,c)=>`Almost. Think: how many times does ${d} fit into ${c}?`,
     what:"What do you get?", subtractBring:"Subtract what fitted, then bring down the next digit.",
     subtract:"Subtract what fitted.",
+    surpriseCat:"🍽️ Surprise! This one does not divide evenly into whole pieces. If these were cutlets, some would need cutting — find the remainder!",
+    surpriseSubtract:"Surprise: whole pieces will not divide evenly. Find the remainder — that is what would need cutting.",
     divideGood:"Correct! The quotient digit and the number to subtract are now in place.",
     subtractGood:"Exactly! The new number is in place — keep going.", solved:"Correct! The problem is solved.",
     almostBring:(used,current,next)=>`Almost. Subtract ${used} from ${current}, then bring down ${next}.`,
@@ -532,7 +536,7 @@ function saveCompletedRun(){
     started_at: new Date(gameStartedAt).toISOString(),
     completed_at: new Date(gameSolvedAt).toISOString(),
     duration_seconds: Math.max(1, Math.round((gameSolvedAt-gameStartedAt)/1000)),
-    locks_opened: 9, examples_solved: 9, game_version: '2026.09.13.2'
+    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.1'
   };
   try {
     const key = 'savekitty_analytics_v1';
@@ -553,14 +557,15 @@ function showWin(){
 
 function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
-function validPair(digits){
+function validPair(digits, wantRemainder=false){
   for(let tries=0; tries<600; tries++){
     const divisor = rnd(3,9);
     const qMin = digits===2 ? 11 : digits===3 ? 21 : 111;
     const qMax = digits===2 ? 32 : digits===3 ? 165 : 1450;
     const q = rnd(qMin, qMax);
     if(String(q).includes("0")) continue;
-    const dividend = divisor * q;
+    const remainder = wantRemainder ? rnd(1, divisor-1) : 0;
+    const dividend = divisor * q + remainder;
     if(String(dividend).length !== digits) continue;
 
     let cur = 0, started = false, ok = true;
@@ -572,22 +577,32 @@ function validPair(digits){
       if(qd === 0){ ok = false; break; }
       cur %= divisor;
     }
-    if(ok) return [dividend, divisor];
+    if(ok && (dividend % divisor !== 0) === wantRemainder) return [dividend, divisor];
   }
+  if(wantRemainder) return digits===2 ? [85,3] : digits===3 ? [337,7] : [4369,6];
   return digits===2 ? [84,3] : digits===3 ? [336,7] : [4368,6];
 }
 
 function newLevels(){
-  levels = [2,3,4].map(d => {
-    const seen = new Set();
+  const surpriseIndex = rnd(3,8); // exactly one rare remainder case, never in the first three problems
+  let repdigitUsed = false;
+  const seenGlobal = new Set();
+
+  levels = [2,3,4].map((d,levelIndex) => {
     const arr = [];
     while(arr.length < 3){
-      const p = validPair(d);
+      const slotIndex = levelIndex*3 + arr.length;
+      const wantRemainder = slotIndex === surpriseIndex;
+      const p = validPair(d, wantRemainder);
       const key = p.join("/");
-      if(!seen.has(key)){
-        seen.add(key);
-        arr.push(p);
-      }
+      const isRepdigit = /^(\d)\1+$/.test(String(p[0]));
+
+      if(seenGlobal.has(key)) continue;
+      if(isRepdigit && repdigitUsed) continue;
+
+      seenGlobal.add(key);
+      if(isRepdigit) repdigitUsed = true;
+      arr.push(p);
     }
     return arr;
   });
@@ -624,6 +639,10 @@ function buildRounds(dividend, divisor){
 
 function currentRound(){
   return rounds[roundIndex] || null;
+}
+
+function sameNumericAnswer(value, expected){
+  return /^\d+$/.test(value) && Number(value) === Number(expected);
 }
 
 function renderLocks(){
@@ -760,7 +779,7 @@ function render(){
     $("stepPill").textContent = tr("step2");
     document.querySelector(".action").classList.remove("step1-compact");
     $("actionTitle").textContent = tr("what");
-    $("actionText").textContent = a.hasNext ? tr("subtractBring") : tr("subtract");
+    $("actionText").textContent = a.hasNext ? tr("subtractBring") : (a.rem !== 0 ? tr("surpriseSubtract") : tr("subtract"));
     $("question").textContent = tr("what");
   }
 }
@@ -840,7 +859,7 @@ function check(){
   }
 
   if(mode === "divide"){
-    if(v === String(a.q)){
+    if(sameNumericAnswer(v, a.q)){
       applyDivide(a);
       if(!a.hasNext && a.rem === 0){
         if(solved === 8) markSolvedTime();
@@ -860,7 +879,7 @@ function check(){
 
   if(mode === "subtract"){
     const expected = a.hasNext ? String(a.nextValue) : String(a.rem);
-    if(v === expected){
+    if(sameNumericAnswer(v, expected)){
       applySubtract(a);
       roundIndex++;
 
@@ -897,6 +916,7 @@ function loadProblem(){
 
   $("exampleLabel").textContent = `${tr("example")} ${P+1} ${tr("of")} 3`;
   $("problem").textContent = `${dividend} ÷ ${divisor}`;
+  if(dividend % divisor !== 0) $("catMsg").textContent = tr("surpriseCat");
   $("progress").textContent = `${tr("lock")} ${solved+1} ${tr("of")} 9`;
   $("levelBadge").textContent = `${tr("level")} ${L+1}`;
   renderLocks();
