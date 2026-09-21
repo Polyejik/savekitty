@@ -429,9 +429,9 @@ const I18N = {
     almostDivide:(d,c)=>`Почти. Подумай: сколько раз ${d} помещается в ${c}?`,
     what:"Что получилось?", subtractBring:"То, что уместилось, вычитаем и сносим цифру справа.",
     subtract:"То, что уместилось, вычитаем.",
-    surpriseCat:"🍱 Сюрприз! Раскладываем котлетки по коробочкам поровну. Не все коробочки получатся полными — котлетки, которые останутся вне полных коробочек, и есть остаток.",
-    surpriseSubtract:"Не все коробочки получаются полными. Найди, сколько котлеток останется вне полных коробочек.",
-    remainderResult:r=>`Остаток = ${r}. Столько котлеток осталось вне полных коробочек.`,
+    surpriseCat:"🍱 Сюрприз! Кладём котлетки в коробочки поровну. Полные коробочки собраны, а котлетки, которым не хватило места в полной коробочке, — это остаток.",
+    surpriseSubtract:"Полные коробочки собраны. Найди, сколько котлеток осталось — это остаток.",
+    remainderResult:r=>`Остаток = ${r}. ${r} котлеток осталось вне полных коробочек.`,
     divideGood:"Верно! Цифра ответа и число для вычитания уже появились в уголке.",
     subtractGood:"Точно! Новое число появилось, продолжаем.", solved:"Всё верно! Пример решён.",
     almostBring:(used,current,next)=>`Почти. Сначала вычти ${used} из ${current}, потом снеси ${next}.`,
@@ -538,7 +538,7 @@ function saveCompletedRun(){
     started_at: new Date(gameStartedAt).toISOString(),
     completed_at: new Date(gameSolvedAt).toISOString(),
     duration_seconds: Math.max(1, Math.round((gameSolvedAt-gameStartedAt)/1000)),
-    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.3'
+    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.4'
   };
   try {
     const key = 'savekitty_analytics_v1';
@@ -560,7 +560,11 @@ function showWin(){
 function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
 function hasTripleRepeat(value){
-  return /(\\d)\\1\\1/.test(String(value));
+  const s = String(value);
+  for(let i=2;i<s.length;i++){
+    if(s[i]===s[i-1] && s[i]===s[i-2]) return true;
+  }
+  return false;
 }
 
 function validPair(digits, wantRemainder=false){
