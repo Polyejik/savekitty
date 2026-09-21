@@ -22,8 +22,9 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
    assert.equal(d.querySelectorAll('#timesTable .hit').length,0,'no suggested multiplication answer during subtraction');
    await enter(rem*10+Number(String(dividend)[i+1]));
   }else if(rem!==0){
-   assert.match(d.getElementById('actionText').textContent,/остаток|remainder/i,'final remainder explanation is shown');
+   assert.match(d.getElementById('actionText').textContent,/остал|left|remainder/i,'final remainder prompt is shown');
    await enter(rem);
+   assert.match(d.getElementById('actionText').textContent,new RegExp('(Остаток|Remainder)\\s*=\\s*'+rem,'i'),'solved screen shows the actual remainder');
   }
   current=rem;
  }
@@ -37,7 +38,7 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
  for(let n=0;n<9;n++){await playProblem(n===0,firstGame);if(n>=2)assert.equal(d.querySelectorAll('#timesTable .hit').length,0,'no highlight after first three locks')}
  assert.equal(firstGame.filter(([a,b])=>a%b!==0).length,1,'exactly one rare remainder problem per game');
  assert(firstGame.findIndex(([a,b])=>a%b!==0)>=3,'remainder surprise is not in the first three problems');
- assert(firstGame.filter(([a])=>/^(\d)\1+$/.test(String(a))).length<=1,'at most one repdigit dividend such as 777/888 per game');
+ assert.equal(firstGame.filter(([a])=>/^(\d)\1+$/.test(String(a))).length,0,'no repdigit dividend such as 777/888 is generated');
  await new Promise(r=>setTimeout(r,800));
  assert(d.getElementById('finish').classList.contains('show'));
  const runs=JSON.parse(w.localStorage.getItem('savekitty_analytics_v1'));assert.equal(runs.length,1);assert.equal(runs[0].locks_opened,9);assert(runs[0].completion_id);assert(runs[0].duration_seconds>0);
@@ -52,11 +53,11 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
  d.querySelector('.langBtn[data-lang="en"]').click();await wait();
  const secondGame=[];for(let n=0;n<9;n++)await playProblem(n===0,secondGame);
  assert.equal(secondGame.filter(([a,b])=>a%b!==0).length,1,'exactly one rare remainder problem in restarted game');
- assert(secondGame.filter(([a])=>/^(\d)\1+$/.test(String(a))).length<=1,'repdigit limit survives restart');
+ assert.equal(secondGame.filter(([a])=>/^(\d)\1+$/.test(String(a))).length,0,'repdigit ban survives restart');
  await new Promise(r=>setTimeout(r,800));
  assert.equal(JSON.parse(w.localStorage.getItem('savekitty_analytics_v1')).length,2);assert.equal(requests.filter(x=>x.url.endsWith('/game-run')).length,2,'both full games reach the server');assert.equal(Object.keys(JSON.parse(w.localStorage.getItem('savekitty_sync_receipts_v1'))).length,2);
  assert.equal(d.querySelector('#sk-end-wrap .secondary').textContent,'End');assert.equal(d.getElementById('again').textContent,'New game');assert.equal(d.querySelector('#pk6 h3').textContent,'Challenge a friend');
  assert.equal(requests.filter(x=>x.url.endsWith('/challenge')).length,2,'sharing re-prepared for second run');
  assert.equal(errors.length,0,errors.join('\n'));
- console.log('PASS: 18 problems / 2 complete games; leading-zero answers, rare remainders, repdigit limit, hint close/reopen, subtraction, level gating, result sync, idempotent finish, leaderboard, family screen, remembered restart, EN, refreshed sharing.');dom.window.close();process.exit(0);
+ console.log('PASS: 18 problems / 2 complete games; leading-zero answers, visible remainders, no repdigits, hint close/reopen, subtraction, level gating, result sync, idempotent finish, leaderboard, family screen, remembered restart, EN, refreshed sharing.');dom.window.close();process.exit(0);
 })().catch(e=>{console.error(e);dom.window.close();process.exit(1)});
