@@ -577,7 +577,8 @@ function validPair(digits, wantRemainder=false){
     const remainder = wantRemainder ? rnd(1, divisor-1) : 0;
     const dividend = divisor * q + remainder;
     if(String(dividend).length !== digits) continue;
-    if(hasTripleRepeat(dividend)) continue;
+    const dividendText = String(dividend);
+    if(hasTripleRepeat(dividend) || new Set(dividendText).size === 1) continue;
 
     let cur = 0, started = false, ok = true;
     for(const ch of String(dividend)){
