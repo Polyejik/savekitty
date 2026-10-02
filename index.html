@@ -538,7 +538,7 @@ function saveCompletedRun(){
     started_at: new Date(gameStartedAt).toISOString(),
     completed_at: new Date(gameSolvedAt).toISOString(),
     duration_seconds: Math.max(1, Math.round((gameSolvedAt-gameStartedAt)/1000)),
-    locks_opened: 9, examples_solved: 9, game_version: '2026.09.21.4'
+    locks_opened: 9, examples_solved: 9, game_version: '2026.10.02.1'
   };
   try {
     const key = 'savekitty_analytics_v1';
@@ -695,7 +695,7 @@ function renderMath(){
 
   rows.forEach(r => {
     const row = document.createElement("div");
-    row.className = "mrow";
+    row.className = "mrow" + (r.final ? " final-row" : "") + (r.remainder ? " remainder-row" : "");
     row.style.setProperty("--n", n);
 
     const sg = document.createElement("div");
@@ -717,6 +717,22 @@ function renderMath(){
     }
     grid.appendChild(row);
   });
+
+  let remainderBadge = document.getElementById("mathRemainder");
+  if(!remainderBadge){
+    remainderBadge = document.createElement("div");
+    remainderBadge.id = "mathRemainder";
+    remainderBadge.className = "mathRemainder";
+    document.querySelector(".corner")?.appendChild(remainderBadge);
+  }
+  const finalRemainder = dividend % divisor;
+  const showRemainder = mode === "next" && finalRemainder !== 0;
+  remainderBadge.hidden = !showRemainder;
+  if(showRemainder){
+    remainderBadge.textContent = lang === "ru"
+      ? `Остаток: ${finalRemainder}`
+      : `Remainder: ${finalRemainder}`;
+  }
 }
 
 function renderHint(){
@@ -820,7 +836,7 @@ function applySubtract(a){
       blue:true,
       arrow:true
     });
-  }else if(a.rem !== 0){
+  }else{
     const remTxt = String(a.rem);
     const remEnd = a.index;
     const remStart = Math.max(0, remEnd - remTxt.length + 1);
@@ -829,7 +845,9 @@ function applySubtract(a){
       text:remTxt,
       start:remStart,
       end:remEnd,
-      blue:true
+      blue:true,
+      final:true,
+      remainder:a.rem !== 0
     });
   }
 }
@@ -870,6 +888,7 @@ function check(){
     if(sameNumericAnswer(v, a.q)){
       applyDivide(a);
       if(!a.hasNext && a.rem === 0){
+        applySubtract(a);
         if(solved === 8) markSolvedTime();
         mode = "next";
       }else{
