@@ -1,17 +1,16 @@
 (()=>{
-  const TOTAL_ROWS=8;
   const $=id=>document.getElementById(id);
   let scheduled=false;
 
   const css=`
-    :root{--pk-cell:24px;--pk-sign:17px}
+    :root{--pk-cell:24px;--pk-sign:17px;--pk-row-count:5}
 
     /* Remove duplicated information while keeping every step the same height. */
     .steps,.mathTitle,.progress{display:none!important}
     .action{box-sizing:border-box!important;min-height:0!important;padding:10px!important}
     #actionTitle{display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important}
     #actionText{height:32px!important;min-height:32px!important;margin:0!important;display:flex!important;align-items:center!important;overflow:hidden!important;line-height:1.18!important}
-    .action.step1-compact #actionText{display:flex!important;visibility:hidden!important}
+    .action.step1-compact #actionText{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important}
     .question,.action.step1-compact .question{height:50px!important;min-height:50px!important;margin-top:5px!important;display:flex!important;align-items:center!important;overflow:hidden!important;box-sizing:border-box!important}
     .answerRow{height:46px!important;min-height:46px!important;margin-top:6px!important}
     .answerRow input,.ok{height:46px!important}
@@ -32,15 +31,17 @@
     .action.pk-clean-solved .answerRow{display:block!important;height:auto!important;min-height:0!important;margin:0!important}
     .action.pk-clean-solved .answerRow .ok{display:block!important;width:100%!important;min-width:0!important;height:52px!important;margin:0!important;font-size:18px!important}
 
-    /* All possible calculation rows are reserved from frame one. */
-    .mathCard{height:194px!important;min-height:194px!important;max-height:194px!important;overflow:hidden!important;padding-top:6px!important;padding-bottom:4px!important}
-    .corner{height:184px!important;min-height:184px!important;max-height:184px!important;align-items:start!important}
-    .grid{height:184px!important;min-height:184px!important;max-height:184px!important;align-content:start!important;overflow:hidden!important}
-    .mrow{height:var(--pk-cell)!important;min-height:var(--pk-cell)!important;grid-template-columns:var(--pk-sign) repeat(var(--n),var(--pk-cell))!important}
+    /* Reserve only the rows this problem can actually need: 5 / 7 / 9 for 2 / 3 / 4 digits. */
+    .mathCard{height:calc(var(--pk-row-count) * var(--pk-cell) + 10px)!important;min-height:calc(var(--pk-row-count) * var(--pk-cell) + 10px)!important;max-height:calc(var(--pk-row-count) * var(--pk-cell) + 10px)!important;overflow:hidden!important;padding-top:6px!important;padding-bottom:4px!important}
+    .corner{position:relative;height:calc(var(--pk-row-count) * var(--pk-cell))!important;min-height:calc(var(--pk-row-count) * var(--pk-cell))!important;max-height:calc(var(--pk-row-count) * var(--pk-cell))!important;align-items:start!important}
+    .grid{height:calc(var(--pk-row-count) * var(--pk-cell))!important;min-height:calc(var(--pk-row-count) * var(--pk-cell))!important;max-height:calc(var(--pk-row-count) * var(--pk-cell))!important;align-content:start!important;overflow:visible!important}
+    .mrow{position:relative;height:var(--pk-cell)!important;min-height:var(--pk-cell)!important;grid-template-columns:var(--pk-sign) repeat(var(--n),var(--pk-cell))!important}
     .cell,.scell{width:var(--pk-cell)!important;height:var(--pk-cell)!important;font-size:18px!important}
     .sign{width:var(--pk-sign)!important;height:var(--pk-cell)!important;font-size:14px!important}
     .rhsRow{height:var(--pk-cell)!important;min-height:var(--pk-cell)!important}
     .pk-placeholder{visibility:hidden!important;pointer-events:none!important}
+    .mathRemainder{position:absolute;right:0;bottom:2px;z-index:2;padding:3px 7px;border-radius:8px;background:#fff4cd;border:1px solid #e0c17b;color:#8b5a10;font-size:12px;font-weight:950;line-height:1.1;white-space:nowrap}
+    .mathRemainder[hidden]{display:none!important}
 
     #pushok-keypad{width:100%;margin:6px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;box-sizing:border-box;user-select:none;-webkit-user-select:none}
     #pushok-keypad button{appearance:none;-webkit-appearance:none;border:1px solid #d9bb7d;border-bottom-width:3px;border-radius:11px;min-height:39px;padding:4px;background:linear-gradient(#fffdf7,#f8ecd1);color:#4a3424;font:900 20px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 0 rgba(104,69,35,.1);touch-action:manipulation}
@@ -63,17 +64,16 @@
     }
     @media(max-width:430px){
       :root{--pk-cell:23px;--pk-sign:16px}
-      .mathCard{height:188px!important;min-height:188px!important;max-height:188px!important}
-      .corner,.grid{height:184px!important;min-height:184px!important;max-height:184px!important}
       #actionText{height:30px!important;min-height:30px!important;font-size:13px!important}
+      .action.step1-compact #actionText{display:none!important;height:0!important;min-height:0!important}
+      .mathRemainder{font-size:10px;padding:3px 5px}
       .question,.action.step1-compact .question{height:48px!important;min-height:48px!important}
       #pushok-keypad button{min-height:38px;font-size:20px}
     }
     @media(min-width:760px){
       :root{--pk-cell:32px;--pk-sign:22px}
-      .mathCard{height:264px!important;min-height:264px!important;max-height:264px!important}
-      .corner,.grid{height:256px!important;min-height:256px!important;max-height:256px!important}
       .cell,.scell{font-size:23px!important}.sign{font-size:17px!important}
+      .mathRemainder{font-size:13px}
       #pushok-keypad{grid-template-columns:repeat(5,minmax(0,1fr));max-width:520px}
       #pushok-keypad .pk-zero{grid-column:auto}
       #pushok-keypad button{min-height:44px;font-size:21px}
@@ -141,14 +141,22 @@
     pad.querySelectorAll('button').forEach(b=>{if(b.disabled!==disabled)b.disabled=disabled});
   }
 
+  function targetRowCount(){
+    const match=String($('problem')?.textContent||'').match(/\d+/);
+    const digits=match?match[0].length:2;
+    return Math.max(5,Math.min(9,digits*2+1));
+  }
+
   function ensureRows(){
     const grid=$('grid');
     if(!grid)return;
+    const target=targetRowCount();
+    document.documentElement.style.setProperty('--pk-row-count',String(target));
     const existing=[...grid.children].filter(x=>x.classList&&x.classList.contains('mrow'));
     const n=Math.max(1,(existing[0]?.children.length||5)-1);
-    if(existing.length>=TOTAL_ROWS)return;
+    if(existing.length>=target)return;
     const frag=document.createDocumentFragment();
-    for(let k=existing.length;k<TOTAL_ROWS;k++){
+    for(let k=existing.length;k<target;k++){
       const r=document.createElement('div');
       r.className='mrow pk-placeholder';
       r.style.setProperty('--n',n);
@@ -165,8 +173,10 @@
     const action=document.querySelector('.action');
     const text=$('actionText');
     if(!action||!text)return;
-    const wanted=action.classList.contains('step1-compact')?'hidden':'visible';
+    const compact=action.classList.contains('step1-compact');
+    const wanted=compact?'hidden':'visible';
     if(text.style.visibility!==wanted)text.style.visibility=wanted;
+    text.style.display=compact?'none':'';
   }
 
   function placeHall(){
