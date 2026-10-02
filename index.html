@@ -538,7 +538,7 @@ function saveCompletedRun(){
     started_at: new Date(gameStartedAt).toISOString(),
     completed_at: new Date(gameSolvedAt).toISOString(),
     duration_seconds: Math.max(1, Math.round((gameSolvedAt-gameStartedAt)/1000)),
-    locks_opened: 9, examples_solved: 9, game_version: '2026.10.02.1'
+    locks_opened: 9, examples_solved: 9, game_version: '2026.10.02.2'
   };
   try {
     const key = 'savekitty_analytics_v1';
@@ -714,26 +714,18 @@ function renderMath(){
         ar.textContent = "↓";
         c.appendChild(ar);
       }
+      if(r.remainder && i === r.end){
+        c.classList.add("hasRemainderLabel");
+        const tag = document.createElement("span");
+        tag.className = "remainderInline";
+        tag.textContent = lang === "ru" ? "остаток" : "remainder";
+        c.appendChild(tag);
+      }
       row.appendChild(c);
     }
     grid.appendChild(row);
   });
 
-  let remainderBadge = document.getElementById("mathRemainder");
-  if(!remainderBadge){
-    remainderBadge = document.createElement("div");
-    remainderBadge.id = "mathRemainder";
-    remainderBadge.className = "mathRemainder";
-    document.querySelector(".corner")?.appendChild(remainderBadge);
-  }
-  const finalRemainder = dividend % divisor;
-  const showRemainder = mode === "next" && finalRemainder !== 0;
-  remainderBadge.hidden = !showRemainder;
-  if(showRemainder){
-    remainderBadge.textContent = lang === "ru"
-      ? `Остаток: ${finalRemainder}`
-      : `Remainder: ${finalRemainder}`;
-  }
 }
 
 function renderHint(){
