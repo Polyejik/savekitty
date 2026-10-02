@@ -31,9 +31,10 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
    assert.match(d.getElementById('actionText').textContent,/остал|left|remainder/i,'final remainder prompt is shown');
    await enter(rem);
    assert.match(d.getElementById('actionText').textContent,new RegExp('(Остаток|Remainder)\\s*=\\s*'+rem,'i'),'solved screen shows the actual remainder');
-   const badge=d.getElementById('mathRemainder');
-   assert(badge&&!badge.hidden,'remainder is labelled inside the long-division area');
-   assert.match(badge.textContent,new RegExp('(Остаток|Remainder):\\s*'+rem,'i'),'math remainder badge shows the actual remainder');
+   assert.equal(d.getElementById('mathRemainder'),null,'detached remainder badge is removed');
+   const inline=d.querySelector('#grid .remainder-row .remainderInline');
+   assert(inline,'remainder label is attached to the final remainder digit');
+   assert.match(inline.textContent,/остаток|remainder/i,'inline remainder label is localized');
   }
   current=rem;
  }
@@ -41,6 +42,13 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
 }
 (async()=>{await new Promise(r=>w.addEventListener('load',r));await wait();await start();
  assert.equal(d.getElementById('actionText').style.display,'none','step 1 does not reserve an empty action-text spacer');
+ assert.equal(d.querySelector('#pushok-keypad [data-key="back"]'),null,'erase is not a loose keypad button');
+ const erase=d.getElementById('answerErase');
+ assert(erase,'inline erase button exists');
+ assert.equal(erase.parentElement,d.querySelector('.answerRow'),'erase sits in the answer row');
+ assert(erase.compareDocumentPosition(d.getElementById('ok')) & w.Node.DOCUMENT_POSITION_FOLLOWING,'erase is immediately before OK');
+ d.querySelector('#pushok-keypad [data-key="7"]').click();assert.equal(d.getElementById('answer').value,'7');
+ erase.click();assert.equal(d.getElementById('answer').value,'','inline erase removes the typed digit');
  assert.equal(d.querySelectorAll('#honorBtn').length,1);assert.equal(d.getElementById('honorBtn').textContent,'🏆');
  click('hint');await wait();assert(!d.getElementById('hintPanel').hidden);assert.equal(d.querySelectorAll('#timesTable .timesFact').length,10);assert.equal(d.querySelectorAll('#timesTable .hit').length,1);
  click('hintCloseX');await wait();assert(d.getElementById('hintPanel').hidden);click('hint');await wait();assert(!d.getElementById('hintPanel').hidden,'opens in one click after X');
@@ -69,5 +77,5 @@ async function playProblem(useLeadingZero=false,bucket=null){const [dividend,div
  assert.equal(d.querySelector('#sk-end-wrap .secondary').textContent,'End');assert.equal(d.getElementById('again').textContent,'New game');assert.equal(d.querySelector('#pk6 h3').textContent,'Challenge a friend');
  assert.equal(requests.filter(x=>x.url.endsWith('/challenge')).length,2,'sharing re-prepared for second run');
  assert.equal(errors.length,0,errors.join('\n'));
- console.log('PASS: 18 problems / 2 complete games; compact 5/7/9-row layout, final zero, labelled remainder, leading-zero answers, no repdigits, hint close/reopen, subtraction, level gating, result sync, idempotent finish, leaderboard, family screen, remembered restart, EN, refreshed sharing.');dom.window.close();process.exit(0);
+ console.log('PASS: 18 problems / 2 complete games; inline erase, inline remainder label, compact 5/7/9-row layout, final zero, leading-zero answers, no repdigits, hint close/reopen, subtraction, level gating, result sync, idempotent finish, leaderboard, family screen, remembered restart, EN, refreshed sharing.');dom.window.close();process.exit(0);
 })().catch(e=>{console.error(e);dom.window.close();process.exit(1)});
