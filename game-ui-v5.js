@@ -12,8 +12,11 @@
     #actionText{height:32px!important;min-height:32px!important;margin:0!important;display:flex!important;align-items:center!important;overflow:hidden!important;line-height:1.18!important}
     .action.step1-compact #actionText{display:none!important;visibility:hidden!important;height:0!important;min-height:0!important}
     .question,.action.step1-compact .question{height:50px!important;min-height:50px!important;margin-top:5px!important;display:flex!important;align-items:center!important;overflow:hidden!important;box-sizing:border-box!important}
-    .answerRow{height:46px!important;min-height:46px!important;margin-top:6px!important}
-    .answerRow input,.ok{height:46px!important}
+    .answerRow{display:grid!important;grid-template-columns:minmax(0,1fr) 56px 108px!important;gap:6px!important;height:46px!important;min-height:46px!important;margin-top:6px!important;align-items:stretch!important}
+    .answerRow input,.ok,.answerErase{height:46px!important}
+    .answerErase{appearance:none;-webkit-appearance:none;border:1px solid #d9bb7d;border-bottom-width:3px;border-radius:10px;background:linear-gradient(#f7eee4,#ead8c5);color:#65452f;font:900 22px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 0 rgba(104,69,35,.1);touch-action:manipulation}
+    .answerErase:active{transform:translateY(1px);border-bottom-width:2px}
+    .answerErase:disabled{opacity:.45}
 
     /* Fixed feedback slot: keypad does not move between steps. */
     .feedback{height:28px!important;min-height:28px!important;margin-top:4px!important;padding:4px 8px!important;overflow:hidden!important;box-sizing:border-box!important;visibility:hidden!important}
@@ -25,7 +28,8 @@
     .action.pk-clean-solved .question,
     .action.pk-clean-solved .feedback,
     .action.pk-clean-solved #pushok-keypad,
-    .action.pk-clean-solved .answerRow input{display:none!important}
+    .action.pk-clean-solved .answerRow input,
+    .action.pk-clean-solved .answerErase{display:none!important}
     .action.pk-clean-solved{padding-bottom:11px!important}
     .action.pk-clean-solved .stepPill{display:inline-flex!important;margin:0 0 10px!important}
     .action.pk-clean-solved .answerRow{display:block!important;height:auto!important;min-height:0!important;margin:0!important}
@@ -40,14 +44,13 @@
     .sign{width:var(--pk-sign)!important;height:var(--pk-cell)!important;font-size:14px!important}
     .rhsRow{height:var(--pk-cell)!important;min-height:var(--pk-cell)!important}
     .pk-placeholder{visibility:hidden!important;pointer-events:none!important}
-    .mathRemainder{position:absolute;right:0;bottom:2px;z-index:2;padding:3px 7px;border-radius:8px;background:#fff4cd;border:1px solid #e0c17b;color:#8b5a10;font-size:12px;font-weight:950;line-height:1.1;white-space:nowrap}
-    .mathRemainder[hidden]{display:none!important}
+    .cell.hasRemainderLabel{overflow:visible!important}
+    .remainderInline{position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);z-index:3;padding:2px 6px;border-radius:8px;background:#fff4cd;border:1px solid #e0c17b;color:#8b5a10;font-size:11px;font-weight:950;line-height:1.1;white-space:nowrap;pointer-events:none}
 
     #pushok-keypad{width:100%;margin:6px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;box-sizing:border-box;user-select:none;-webkit-user-select:none}
     #pushok-keypad button{appearance:none;-webkit-appearance:none;border:1px solid #d9bb7d;border-bottom-width:3px;border-radius:11px;min-height:39px;padding:4px;background:linear-gradient(#fffdf7,#f8ecd1);color:#4a3424;font:900 20px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 0 rgba(104,69,35,.1);touch-action:manipulation}
     #pushok-keypad button:active{transform:translateY(1px);border-bottom-width:2px;background:#f4e2bd}
-    #pushok-keypad .pk-zero{grid-column:1/span 2}
-    #pushok-keypad .pk-delete{background:linear-gradient(#f7eee4,#ead8c5);color:#65452f}
+    #pushok-keypad .pk-zero{grid-column:2}
 
     .locksMeta{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:7px!important;align-items:stretch!important;margin-top:8px!important}
     .locksMeta .locks{min-width:0!important;margin-top:0!important}
@@ -66,14 +69,15 @@
       :root{--pk-cell:23px;--pk-sign:16px}
       #actionText{height:30px!important;min-height:30px!important;font-size:13px!important}
       .action.step1-compact #actionText{display:none!important;height:0!important;min-height:0!important}
-      .mathRemainder{font-size:10px;padding:3px 5px}
+      .remainderInline{font-size:9px;padding:2px 5px}
+      .answerRow{grid-template-columns:minmax(0,1fr) 50px 96px!important}
       .question,.action.step1-compact .question{height:48px!important;min-height:48px!important}
       #pushok-keypad button{min-height:38px;font-size:20px}
     }
     @media(min-width:760px){
       :root{--pk-cell:32px;--pk-sign:22px}
       .cell,.scell{font-size:23px!important}.sign{font-size:17px!important}
-      .mathRemainder{font-size:13px}
+      .remainderInline{font-size:12px}
       #pushok-keypad{grid-template-columns:repeat(5,minmax(0,1fr));max-width:520px}
       #pushok-keypad .pk-zero{grid-column:auto}
       #pushok-keypad button{min-height:44px;font-size:21px}
@@ -121,24 +125,35 @@
       pad.id='pushok-keypad';
       pad.setAttribute('role','group');
       pad.setAttribute('aria-label','Цифровая клавиатура');
-      ['1','2','3','4','5','6','7','8','9'].forEach(n=>{
+      ['1','2','3','4','5','6','7','8','9','0'].forEach(n=>{
         const b=document.createElement('button');
-        b.type='button';b.dataset.key=n;b.textContent=n;pad.appendChild(b);
+        b.type='button';b.dataset.key=n;b.textContent=n;if(n==='0')b.className='pk-zero';pad.appendChild(b);
       });
-      const zero=document.createElement('button');
-      zero.type='button';zero.dataset.key='0';zero.textContent='0';zero.className='pk-zero';pad.appendChild(zero);
-      const del=document.createElement('button');
-      del.type='button';del.dataset.key='back';del.textContent='⌫';del.className='pk-delete';del.setAttribute('aria-label','Стереть');pad.appendChild(del);
       pad.addEventListener('click',e=>{
         const b=e.target.closest('button');
         if(!b)return;
-        b.dataset.key==='back'?erase():typeDigit(b.dataset.key);
+        typeDigit(b.dataset.key);
       });
       const row=input.closest('.answerRow')||input.parentElement;
       row.insertAdjacentElement('afterend',pad);
     }
+    const row=input.closest('.answerRow')||input.parentElement;
+    let eraseBtn=$('answerErase');
+    if(!eraseBtn){
+      eraseBtn=document.createElement('button');
+      eraseBtn.type='button';
+      eraseBtn.id='answerErase';
+      eraseBtn.className='answerErase';
+      eraseBtn.textContent='⌫';
+      eraseBtn.setAttribute('aria-label','Стереть');
+      eraseBtn.addEventListener('click',erase);
+      const ok=$('ok');
+      if(ok&&ok.parentElement===row)row.insertBefore(eraseBtn,ok);
+      else row.appendChild(eraseBtn);
+    }
     const disabled=!!input.disabled;
     pad.querySelectorAll('button').forEach(b=>{if(b.disabled!==disabled)b.disabled=disabled});
+    if(eraseBtn.disabled!==disabled)eraseBtn.disabled=disabled;
   }
 
   function targetRowCount(){
